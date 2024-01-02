@@ -53,9 +53,6 @@ public class User {
         }
     }
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    @JsonManagedReference
-    private Set<Book> books;
 
 
     public String getUsername() {
@@ -98,11 +95,4 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    public Set<Book> getBooks() {
-        return books;
-    }
-
-    public void setBooks(Set<Book> books) {
-        this.books = books;
-    }
 }
