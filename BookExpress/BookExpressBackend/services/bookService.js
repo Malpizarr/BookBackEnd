@@ -12,7 +12,6 @@ exports.createBook = async (userId, bookData) => {
     }
 
     try {
-        // Crear el nuevo libro
         const newBook = new Book({
             ...bookData,
             userId: userId,
