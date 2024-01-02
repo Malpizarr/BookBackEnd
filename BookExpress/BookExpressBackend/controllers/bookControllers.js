@@ -1,0 +1,144 @@
+const Book = require('../models/book');
+const Page = require('../models/page');
+const bookService = require('../services/bookService');
+
+exports.createBook = async (req, res) => {
+    try {
+        const bookData = req.body; // Asegúrate de que esto contiene los datos del libro
+        const userId = req.userId; // Usa req.userId en lugar de req.sub
+
+        // Verifica que tanto userId como bookData estén presentes
+        if (!userId || !bookData) {
+            throw new Error("User ID and book data are required");
+        }
+
+        const book = await bookService.createBook(userId, bookData); // Pasa userId y bookData
+        res.status(200).send(book);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: error.message });
+    }
+};
+
+
+exports.getUserBooks = async (req, res) => {
+    try {
+        const books = await bookService.getUserBooks(req.userId);
+        if (!books || books.length === 0) {
+            // Si no hay libros, puedes optar por enviar una respuesta vacía o un mensaje
+            return res.status(200).send(books);
+        }
+        res.status(200).send(books);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+};
+
+
+
+
+exports.getPagesByBook = async (req, res) => {
+    try {
+        const bookId = req.params.bookId;
+        const pages = await bookService.getPagesByBook(bookId);
+        res.status(200).json(pages);
+    } catch (error) {
+        res.status(404).json({ message: error.message });
+    }
+};
+
+
+exports.moveToNextPage = async (req, res) => {
+    try {
+        const page = await bookService.moveToNextPage(req.params.bookId);
+        res.status(200).send(page);
+    } catch (error) {
+        res.status(404).send({ message: error.message });
+    }
+};
+
+exports.createPage = async (req, res) => {
+    try {
+        const pageData = req.body;
+        const page = await bookService.createPage(req.params.bookId, pageData);
+        res.status(200).send(page);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+};
+
+exports.deleteBook = async (req, res) => {
+    try {
+        await bookService.deleteBook(req.params.bookId);
+        res.status(200).send({ message: 'Book deleted successfully' });
+    } catch (error) {
+        res.status(404).send({ message: error.message });
+    }
+};
+
+exports.deletePage = async (req, res) => {
+    try {
+        const bookId = req.params.bookId;
+        const pageNumber = req.params.pageNumber;
+        const updatedPages = await bookService.deletePage(bookId, pageNumber);
+
+        res.status(200).send(updatedPages);
+    } catch (error) {
+        console.error(`Error en controlador deletePage: ${error.message}`);
+        res.status(404).send({ message: error.message });
+    }
+};
+
+
+exports.updateBook = async (req, res) => {
+    try {
+        console.log("Updating book with ID:", req.params.bookId); // Verificar el valor de bookId
+        const updatedBook = await bookService.updateBook(req.params.bookId, req.body);
+        res.status(200).send(updatedBook);
+    } catch (error) {
+        console.error("Error in updateBook:", error);
+        res.status(404).send({ message: error.message });
+    }
+};
+
+
+exports.updatePage = async (req, res) => {
+    try {
+        const bookId = req.params.bookId;
+        const pageNumber = req.params.pageNumber;
+        const updatedPage = await bookService.updatePage(bookId, pageNumber, req.body);
+
+        res.status(200).send(updatedPage);
+    } catch (error) {
+        console.error(`Error en controlador updatePage: ${error.message}`);
+        res.status(404).send({ message: error.message });
+    }
+};
+
+
+exports.getNextPage = async (req, res) => {
+    try {
+        const nextPage = await bookService.getNextPage(req.params.bookId, req.params.username);
+        res.status(200).send(nextPage);
+    } catch (error) {
+        res.status(404).send({ message: error.message });
+    }
+};
+
+exports.getPreviousPage = async (req, res) => {
+    try {
+        const previousPage = await bookService.getPreviousPage(req.params.bookId, req.params.username);
+        res.status(200).send(previousPage);
+    } catch (error) {
+        res.status(404).send({ message: error.message });
+    }
+};
+
+exports.getPageByNumber = async (req, res) => {
+    try {
+        const page = await bookService.getPageByNumber(req.params.bookId, req.params.pageNumber);
+        res.status(200).send(page);
+    } catch (error) {
+        res.status(404).send({ message: error.message });
+    }
+};
