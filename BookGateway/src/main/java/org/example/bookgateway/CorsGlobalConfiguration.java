@@ -14,22 +14,22 @@ public class CorsGlobalConfiguration {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Permitir acceso desde cualquier origen
-        config.addAllowedOrigin("http://localhost:3000");
+        config.addAllowedOrigin("http://localhost:3000"); // Origen permitido
 
-        // Permitir cualquier cabecera
-        config.addAllowedHeader("*");
+        config.addAllowedHeader("*"); // Permitir cualquier cabecera
 
-        // Permitir métodos HTTP comunes
-        config.addAllowedMethod("GET");
+        config.addAllowedMethod("GET"); // Permitir métodos HTTP comunes
         config.addAllowedMethod("POST");
         config.addAllowedMethod("PUT");
         config.addAllowedMethod("DELETE");
 
-        // Aplicar la configuración de CORS a todas las rutas
+        // Importante: Permitir credenciales
+        config.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
 
         return new CorsWebFilter(source);
     }
 }
+
