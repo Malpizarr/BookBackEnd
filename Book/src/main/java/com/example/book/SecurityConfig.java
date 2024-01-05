@@ -27,6 +27,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Map;
 
 
 @Configuration
@@ -55,15 +56,20 @@ public class SecurityConfig {
                         .successHandler(new AuthenticationSuccessHandler() {
                             @Override
                             public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
-                                OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
-                                User user = customOAuth2UserService.processUserDetails(oidcUser.getEmail(), oidcUser.getFullName());
-                                String token = jwtTokenUtil.createToken(user.getUsername());
+                                OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+                                Map<String, Object> attributes = oAuth2User.getAttributes();
+                                String email = (String) attributes.get("email");
+                                String name = (String) (attributes.containsKey("name") ? attributes.get("name") : "");
+
+                                User user = customOAuth2UserService.processUserDetails(email, name);
+                                String token = jwtTokenUtil.createToken(user.getId());
 
                                 // Enviar token y username como parte de la URL
                                 response.sendRedirect("http://localhost:3000?token=" + token + "&username=" + user.getUsername());
                             }
 
-                        }));
+
+    }));
         return http.build();
     }
 

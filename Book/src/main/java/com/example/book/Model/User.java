@@ -5,13 +5,14 @@ import jakarta.persistence.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "User")
 public class User {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id; // Cambiado a String para almacenar UUID
 
     @Column(unique = true, nullable = false, length = 50)
     private String username;
@@ -45,10 +46,15 @@ public class User {
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedAt;
 
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = new Date();
+        }
+
+        if (id == null) {
+            id = UUID.randomUUID().toString(); // Generar UUID para el ID
         }
     }
 
@@ -78,20 +84,9 @@ public class User {
         this.email = email;
     }
 
-    public Date getCreatedAt() {
-        return createdAt;
-    }
 
-    public void setCreatedAt(Date createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Date getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Date updatedAt) {
-        this.updatedAt = updatedAt;
+    public String getId() {
+        return id;
     }
 
 }

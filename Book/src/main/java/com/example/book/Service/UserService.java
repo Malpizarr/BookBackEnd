@@ -59,7 +59,7 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("Invalid password");
         }
 
-        String token = jwtTokenUtil.createToken(username);
+        String token = jwtTokenUtil.createToken(user.getId());
         return new LoginResponse(token);
     }
 

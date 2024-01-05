@@ -13,15 +13,7 @@ const verifyToken = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
-
-        // Asegúrate de que el token contenga el campo necesario (por ejemplo, 'sub' o 'userId')
-        if (!decoded.sub && !decoded.userId) {
-            return res.status(401).json({ message: 'Invalid token structure' });
-        }
-
-        // Asigna el userId basado en la estructura de tu token JWT
-        req.userId = decoded.sub || decoded.userId;
-
+        req.userId = decoded.sub || decoded.userId; // Asegúrate de que el token contenga 'userId'
         next();
     } catch (error) {
         res.status(401).json({ message: 'Invalid token', error: error.message });
