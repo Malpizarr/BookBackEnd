@@ -50,16 +50,15 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
-            // Aquí puedes actualizar los detalles del usuario si es necesario
-            // Por ejemplo, si quieres actualizar el nombre cada vez que el usuario inicia sesión
+            //Actualiza campos si es necesario
             user.setUsername(name);
         } else {
+            //Si no existe, crea un nuevo usuario
             user = new User();
             user.setEmail(email);
             user.setUsername(name);
             String randomPassword = PasswordGenerator.generatePassword();
             user.setPassword(passwordEncoder.encode(randomPassword));
-            // Configura campos adicionales si es necesario
         }
 
         userRepository.save(user);
