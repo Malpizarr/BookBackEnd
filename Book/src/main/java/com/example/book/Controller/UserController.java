@@ -7,6 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -21,12 +24,19 @@ public class UserController {
 
 
     @GetMapping("/{userId}")
-    public User getUserById(@PathVariable Long userId) {
-        return userService.findUserById(userId);
+    public ResponseEntity<Map<String, String>> getUserById(@PathVariable String userId) {
+        User user = userService.findUserById(userId);
+        if (user != null) {
+            Map<String, String> userInfo = new HashMap<>();
+            userInfo.put("username", user.getUsername());
+            return ResponseEntity.ok(userInfo);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/update/{userId}")
-    public ResponseEntity<User> updateUser(@PathVariable Long userId, @RequestBody User userDetails) {
+    public ResponseEntity<User> updateUser(@PathVariable String userId, @RequestBody User userDetails) {
         try {
             User updatedUser = userService.updateUser(userId, userDetails);
             return ResponseEntity.ok(updatedUser);

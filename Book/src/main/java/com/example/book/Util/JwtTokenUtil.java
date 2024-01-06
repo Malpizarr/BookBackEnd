@@ -1,5 +1,6 @@
 package com.example.book.Util;
 
+import com.example.book.Model.CustomUserDetails;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -51,9 +52,13 @@ public class JwtTokenUtil {
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
-        final String username = getUsernameFromToken(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        final String userIdFromToken = getUserIdFromToken(token);
+        String userIdFromUserDetails = ((CustomUserDetails) userDetails).getUserId();
+
+        return (userIdFromToken.equals(userIdFromUserDetails) && !isTokenExpired(token));
     }
+
+
 
     private boolean isTokenExpired(String token) {
         final Date expiration = Jwts.parserBuilder()
@@ -63,5 +68,14 @@ public class JwtTokenUtil {
                 .getBody()
                 .getExpiration();
         return expiration.before(new Date());
+    }
+
+    public String getUserIdFromToken(String jwtToken) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(jwtToken)
+                .getBody()
+                .getSubject();
     }
 }

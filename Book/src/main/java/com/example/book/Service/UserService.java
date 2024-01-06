@@ -1,7 +1,9 @@
 package com.example.book.Service;
 
 import com.example.book.Model.LoginResponse;
+import com.example.book.Model.Role;
 import com.example.book.Model.User;
+import com.example.book.Repositories.RoleRepository;
 import com.example.book.Repositories.UserRepository;
 import com.example.book.Util.JwtTokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 
@@ -19,6 +23,7 @@ import java.util.regex.Pattern;
 public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
 
@@ -27,13 +32,22 @@ public class UserService implements UserDetailsService {
     );
 
     @Autowired
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenUtil jwtTokenUtil) {
+    public UserService(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtTokenUtil jwtTokenUtil) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenUtil = jwtTokenUtil;
     }
 
     public User register(User newUser) {
+        // Busca el rol por defecto
+        Role userRole = roleRepository.findByName("ROLE_USER")
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        // Asigna los roles al nuevo usuario
+        Set<Role> roles = new HashSet<>();
+        roles.add(userRole);
+        newUser.setRoles(roles);
         if (userRepository.findByUsername(newUser.getUsername()).isPresent()) {
             throw new RuntimeException("Username already taken");
         }
@@ -80,12 +94,12 @@ public class UserService implements UserDetailsService {
         return userRepository.save(newUser);
     }
 
-    public User findUserById(Long userId) {
+    public User findUserById(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 
-    public User updateUser(Long userId, User userDetails) {
+    public User updateUser(String userId, User userDetails) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         user.setUsername(userDetails.getUsername());
