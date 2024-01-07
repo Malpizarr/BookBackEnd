@@ -55,31 +55,23 @@ public class FriendshipService {
         List<Friendship> requesterFriendships = friendshipRepository.findByRequesterIdAndStatus(userId, "accepted");
         List<Friendship> friendFriendships = friendshipRepository.findByFriendIdAndStatus(userId, "accepted");
 
-        Set<Friendship> uniqueFriendships = new HashSet<>();
-        uniqueFriendships.addAll(requesterFriendships);
-        uniqueFriendships.addAll(friendFriendships);
-
-        Set<String> userIds = uniqueFriendships.stream()
+        Set<String> userIds = Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
                 .map(friendship -> Arrays.asList(friendship.getRequesterId(), friendship.getFriendId()))
                 .flatMap(List::stream)
                 .collect(Collectors.toSet());
 
         Map<String, String> usernameMap = fetchUsernames(userIds);
 
-        return uniqueFriendships.stream()
+        return Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
                 .map(friendship -> {
-                    String requesterUsername = usernameMap.getOrDefault(friendship.getRequesterId(), "Unknown");
-                    String friendUsername = usernameMap.getOrDefault(friendship.getFriendId(), "Unknown");
+                    String otherUserId = friendship.getRequesterId().equals(userId) ? friendship.getFriendId() : friendship.getRequesterId();
+                    String otherUsername = usernameMap.getOrDefault(otherUserId, "Unknown");
 
-                    // Ajusta los nombres según el usuario que realiza la consulta
-                    if (friendship.getRequesterId().equals(userId)) {
-                        return new FriendshipDto(requesterUsername, friendUsername, friendship.getStatus(), friendship.getCreatedAt());
-                    } else {
-                        return new FriendshipDto(friendUsername, requesterUsername, friendship.getStatus(), friendship.getCreatedAt());
-                    }
+                    return new FriendshipDto(friendship.getId(), otherUsername, friendship.getStatus(), friendship.getCreatedAt());
                 })
                 .collect(Collectors.toList());
     }
+
 
     public Map<String, String> fetchUsernames(Set<String> userIds) {
         Map<String, String> usernameMap = new HashMap<>();
@@ -99,4 +91,27 @@ public class FriendshipService {
         });
         return usernameMap;
     }
+
+    public List<FriendshipDto> getPendingFriendshipDetailsWithUsernames(String userId) {
+        List<Friendship> requesterFriendships = friendshipRepository.findByRequesterIdAndStatus(userId, "pending");
+        List<Friendship> friendFriendships = friendshipRepository.findByFriendIdAndStatus(userId, "pending");
+
+        Set<String> userIds = Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
+                .map(friendship -> Arrays.asList(friendship.getRequesterId(), friendship.getFriendId()))
+                .flatMap(List::stream)
+                .collect(Collectors.toSet());
+
+        Map<String, String> usernameMap = fetchUsernames(userIds);
+
+        return Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
+                .map(friendship -> {
+                    String otherUserId = friendship.getRequesterId().equals(userId) ? friendship.getFriendId() : friendship.getRequesterId();
+                    String otherUsername = usernameMap.getOrDefault(otherUserId, "Unknown");
+
+                    return new FriendshipDto(friendship.getId(), otherUsername, friendship.getStatus(), friendship.getCreatedAt());
+                })
+                .collect(Collectors.toList());
+    }
+
+
 }

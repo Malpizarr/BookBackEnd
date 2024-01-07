@@ -4,25 +4,26 @@ import java.time.LocalDateTime;
 
 public class FriendshipDto {
 
-    private String requesterUsername;
+    private String id;
     private String friendUsername;
     private String status;
     private LocalDateTime createdAt;
 
-    public FriendshipDto(String requesterUsername, String friendUsername, String status, LocalDateTime createdAt) {
-        this.requesterUsername = requesterUsername;
+    public FriendshipDto(String id, String friendUsername, String status, LocalDateTime createdAt) {
+        this.id = id;
         this.friendUsername = friendUsername;
         this.status = status;
         this.createdAt = createdAt;
     }
 
     // Getters y Setters
-    public String getRequesterUsername() {
-        return requesterUsername;
+
+    public String getId() {
+        return id;
     }
 
-    public void setRequesterUsername(String requesterUsername) {
-        this.requesterUsername = requesterUsername;
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getFriendUsername() {
@@ -49,16 +50,13 @@ public class FriendshipDto {
         this.createdAt = createdAt;
     }
 
-    // Método toString (opcional) para representar el objeto como String
     @Override
     public String toString() {
         return "FriendshipDto{" +
-                "requesterUsername='" + requesterUsername + '\'' +
+                "id='" + id + '\'' +
                 ", friendUsername='" + friendUsername + '\'' +
                 ", status='" + status + '\'' +
                 ", createdAt=" + createdAt +
                 '}';
     }
 }
-
-

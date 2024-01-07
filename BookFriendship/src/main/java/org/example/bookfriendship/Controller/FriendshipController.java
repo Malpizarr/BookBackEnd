@@ -1,5 +1,6 @@
 package org.example.bookfriendship.Controller;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.catalina.User;
 import org.example.bookfriendship.Model.Friendship;
@@ -41,6 +42,18 @@ public class FriendshipController {
         return ResponseEntity.ok(friendships);
     }
 
+    @PutMapping("/{friendshipId}/accept")
+    public ResponseEntity<?> acceptFriendship(@PathVariable String friendshipId) {
+        try {
+            Friendship acceptedFriendship = friendshipService.acceptFriendship(friendshipId);
+            return ResponseEntity.ok(acceptedFriendship);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al aceptar la amistad: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserDetails(@PathVariable String userId) {
         try {
@@ -64,12 +77,26 @@ public class FriendshipController {
         }
     }
 
-    @GetMapping("/{userId}/friends")
-    public ResponseEntity<List<FriendshipDto>> getFriends(@PathVariable String userId, HttpServletRequest request) {
-        String jwtToken = jwtTokenUtil.obtenerJwtDeLaSolicitud(request);
+    @GetMapping("/{userId}/pending")
+    public ResponseEntity<?> getPending(@PathVariable String userId, HttpServletRequest request) {
+        try {
+            String jwtToken = jwtTokenUtil.obtenerJwtDeLaSolicitud(request);
+            List<FriendshipDto> friendshipsWithUsernames = friendshipService.getPendingFriendshipDetailsWithUsernames(userId);
+            return ResponseEntity.ok(friendshipsWithUsernames);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener amistades pendientes: " + e.getMessage());
+        }
+    }
 
-        List<FriendshipDto> friendshipsWithUsernames = friendshipService.getFriendshipDetailsWithUsernames(userId);
-        return ResponseEntity.ok(friendshipsWithUsernames);
+    @GetMapping("/{userId}/friends")
+    public ResponseEntity<?> getFriends(@PathVariable String userId, HttpServletRequest request) {
+        try {
+            String jwtToken = jwtTokenUtil.obtenerJwtDeLaSolicitud(request);
+            List<FriendshipDto> friendshipsWithUsernames = friendshipService.getFriendshipDetailsWithUsernames(userId);
+            return ResponseEntity.ok(friendshipsWithUsernames);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al obtener lista de amigos: " + e.getMessage());
+        }
     }
 
 
