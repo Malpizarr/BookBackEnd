@@ -36,7 +36,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } else {
-                // Loguear o manejar la respuesta en caso de un token inválido
                 System.out.println("Token JWT inválido");
             }
         } else {

@@ -77,10 +77,10 @@ public class FriendshipController {
         }
     }
 
-    @GetMapping("/{userId}/pending")
-    public ResponseEntity<?> getPending(@PathVariable String userId, HttpServletRequest request) {
+    @GetMapping("/pending")
+    public ResponseEntity<?> getPending(HttpServletRequest request) {
         try {
-            String jwtToken = jwtTokenUtil.obtenerJwtDeLaSolicitud(request);
+            String userId = jwtTokenUtil.getUserIdFromToken(jwtTokenUtil.obtenerJwtDeLaSolicitud(request));
             List<FriendshipDto> friendshipsWithUsernames = friendshipService.getPendingFriendshipDetailsWithUsernames(userId);
             return ResponseEntity.ok(friendshipsWithUsernames);
         } catch (Exception e) {
@@ -88,10 +88,11 @@ public class FriendshipController {
         }
     }
 
-    @GetMapping("/{userId}/friends")
-    public ResponseEntity<?> getFriends(@PathVariable String userId, HttpServletRequest request) {
+    @GetMapping("/friends")
+    public ResponseEntity<?> getFriends( HttpServletRequest request) {
         try {
-            String jwtToken = jwtTokenUtil.obtenerJwtDeLaSolicitud(request);
+            String userId = jwtTokenUtil.getUserIdFromToken(jwtTokenUtil.obtenerJwtDeLaSolicitud(request));
+            System.out.println(userId);
             List<FriendshipDto> friendshipsWithUsernames = friendshipService.getFriendshipDetailsWithUsernames(userId);
             return ResponseEntity.ok(friendshipsWithUsernames);
         } catch (Exception e) {

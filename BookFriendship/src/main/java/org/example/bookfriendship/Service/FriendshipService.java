@@ -64,13 +64,22 @@ public class FriendshipService {
 
         return Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
                 .map(friendship -> {
-                    String otherUserId = friendship.getRequesterId().equals(userId) ? friendship.getFriendId() : friendship.getRequesterId();
-                    String otherUsername = usernameMap.getOrDefault(otherUserId, "Unknown");
+                    String actualFriendId;
+                    String otherUsername;
 
-                    return new FriendshipDto(friendship.getId(), otherUsername, friendship.getStatus(), friendship.getCreatedAt());
+                    if (friendship.getRequesterId().equals(userId)) {
+                        actualFriendId = friendship.getFriendId();
+                        otherUsername = usernameMap.getOrDefault(actualFriendId, "Unknown");
+                    } else {
+                        actualFriendId = friendship.getRequesterId();
+                        otherUsername = usernameMap.getOrDefault(actualFriendId, "Unknown");
+                    }
+
+                    return new FriendshipDto(friendship.getId(), otherUsername, actualFriendId, friendship.getStatus(), friendship.getCreatedAt());
                 })
                 .collect(Collectors.toList());
     }
+
 
 
     public Map<String, String> fetchUsernames(Set<String> userIds) {
@@ -108,10 +117,12 @@ public class FriendshipService {
                     String otherUserId = friendship.getRequesterId().equals(userId) ? friendship.getFriendId() : friendship.getRequesterId();
                     String otherUsername = usernameMap.getOrDefault(otherUserId, "Unknown");
 
-                    return new FriendshipDto(friendship.getId(), otherUsername, friendship.getStatus(), friendship.getCreatedAt());
+
+                    return new FriendshipDto(friendship.getId(), otherUsername, friendship.getFriendId(), friendship.getStatus(), friendship.getCreatedAt());
                 })
                 .collect(Collectors.toList());
+
+
+
     }
-
-
 }

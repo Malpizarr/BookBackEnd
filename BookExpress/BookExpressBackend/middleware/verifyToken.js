@@ -13,7 +13,7 @@ const verifyToken = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
-        req.userId = decoded.sub || decoded.userId; // Asegúrate de que el token contenga 'userId'
+        req.userId = decoded.sub || decoded.userId;
         next();
     } catch (error) {
         res.status(401).json({ message: 'Invalid token', error: error.message });

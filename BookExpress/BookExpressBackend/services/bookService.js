@@ -15,7 +15,8 @@ exports.createBook = async (userId, bookData) => {
         const newBook = new Book({
             ...bookData,
             userId: userId,
-            pages: [] // Inicializa pages como un arreglo vacío
+            pages: [],
+            status: "Public"
         });
 
         // Crear la primera página
@@ -23,7 +24,7 @@ exports.createBook = async (userId, bookData) => {
             content: "Contenido inicial de la página",
             pageNumber: 1,
             createdAt: new Date(),
-            bookId: newBook._id // Relaciona la página con el libro
+            bookId: newBook._id
         });
 
         // Agregar la primera página al libro
@@ -61,7 +62,6 @@ exports.updatePage = async (bookId, pageNumber, pageDetails) => {
         }
 
         book.pages[pageIndex].content = pageDetails.content;
-        // ...otros campos a actualizar...
 
         await book.save();
 
@@ -71,6 +71,72 @@ exports.updatePage = async (bookId, pageNumber, pageDetails) => {
         throw error;
     }
 };
+
+exports.getBookByUserId = async (userId) => {
+    try {
+        const books = await Book.find({ userId: userId, status: "Public" });
+        return books;
+    } catch (error) {
+        console.error('Error en bookService.getBookByUserId:', error);
+        throw error; // Lanza el error para manejarlo en el controlador
+    }
+};
+
+
+exports.getFriendIds = async (userId, authorizationHeader) => {
+    try {
+        const response = await fetch(`http://localhost:8081/api/friendships/friends`, {
+            headers: { 'Authorization': authorizationHeader }
+        });
+        const friendsData = await response.json();
+
+        return friendsData.map(friend => friend.friendId);
+    } catch (error) {
+        console.error('Error al obtener los IDs de los amigos:', error);
+        throw error;
+    }
+};
+
+exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
+    try {
+        const booksPromises = friendIds.map(async friendId => {
+            const username = await getUsernameById(friendId, authorizationHeader);
+            const response = await fetch(`http://localhost:8081/books/${friendId}/books`, {
+                headers: { 'Authorization': authorizationHeader }
+            });
+            const books = await response.json();
+
+            // Verificar si la respuesta contiene un arreglo de libros
+            if (!Array.isArray(books)) {
+                console.error(`Expected an array of books, got:`, books);
+                return []; // Devolver un arreglo vacío si la respuesta no es un arreglo
+            }
+
+            return books.map(book => ({ ...book, username })); // Agregar el nombre de usuario a cada libro
+        });
+
+        const booksResults = await Promise.all(booksPromises);
+        return booksResults.flat(); // Aplanar el array de arrays de libros
+    } catch (error) {
+        console.error('Error al obtener libros de amigos:', error);
+        throw error;
+    }
+};
+
+const getUsernameById = async (userId, authorizationHeader) => {
+    try {
+        const response = await fetch(`http://localhost:8081/users/${userId}`, {
+            headers: { 'Authorization': authorizationHeader }
+        });
+        const userData = await response.json();
+        return userData.username;
+    } catch (error) {
+        console.error('Error al obtener el nombre de usuario:', error);
+        return ''; // Devolver un string vacío si hay un error
+    }
+};
+
+
 
 
 

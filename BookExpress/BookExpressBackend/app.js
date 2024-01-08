@@ -44,8 +44,6 @@ client.connect()
     })
     .catch(err => {
         console.error("Failed to connect to MongoDB!", err);
-        process.exit(1); // Terminar el proceso si no se puede establecer una conexión a la base de datos
+        process.exit(1);
     });
-
-// Exportar el cliente para usarlo en otras partes de tu aplicación
 module.exports = client;

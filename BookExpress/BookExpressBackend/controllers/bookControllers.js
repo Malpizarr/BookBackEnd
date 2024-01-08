@@ -1,3 +1,4 @@
+
 const Book = require('../models/book');
 const Page = require('../models/page');
 const bookService = require('../services/bookService');
@@ -7,7 +8,7 @@ exports.createBook = async (req, res) => {
         const bookData = req.body; // Asegúrate de que esto contiene los datos del libro
         const userId = req.userId; // Usa req.userId en lugar de req.sub
 
-        // Verifica que tanto userId como bookData estén presentes
+
         if (!userId || !bookData) {
             throw new Error("User ID and book data are required");
         }
@@ -20,12 +21,23 @@ exports.createBook = async (req, res) => {
     }
 };
 
+exports.getBookByUserId = async (req, res) => {
+    try {
+        const userId = req.params.Id;
+        const books = await bookService.getBookByUserId(userId);
+        if (!books || books.length === 0) {
+            return res.status(404).send({ message: 'No books found for this user.' });
+        }
+        res.status(200).send(books);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
+    }
+};
 
 exports.getUserBooks = async (req, res) => {
     try {
         const books = await bookService.getUserBooks(req.userId);
         if (!books || books.length === 0) {
-            // Si no hay libros, puedes optar por enviar una respuesta vacía o un mensaje
             return res.status(200).send(books);
         }
         res.status(200).send(books);
@@ -140,5 +152,18 @@ exports.getPageByNumber = async (req, res) => {
         res.status(200).send(page);
     } catch (error) {
         res.status(404).send({ message: error.message });
+    }
+};
+
+exports.friendBooks = async (req, res) => {
+    const userId = req.userId;
+    const authorizationHeader = req.headers.authorization;
+
+    try {
+        const friendIds = await bookService.getFriendIds(userId, authorizationHeader);
+        const allBooks = await bookService.getFriendsBooks(friendIds, authorizationHeader);
+        res.status(200).send(allBooks);
+    } catch (error) {
+        res.status(500).send({ message: error.message });
     }
 };

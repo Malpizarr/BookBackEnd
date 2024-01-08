@@ -8,10 +8,12 @@ public class FriendshipDto {
     private String friendUsername;
     private String status;
     private LocalDateTime createdAt;
+    private String friendId;
 
-    public FriendshipDto(String id, String friendUsername, String status, LocalDateTime createdAt) {
+    public FriendshipDto(String id, String friendUsername, String friendId, String status, LocalDateTime createdAt) {
         this.id = id;
         this.friendUsername = friendUsername;
+        this.friendId = friendId;
         this.status = status;
         this.createdAt = createdAt;
     }
@@ -50,11 +52,20 @@ public class FriendshipDto {
         this.createdAt = createdAt;
     }
 
+    public String getFriendId() {
+        return friendId;
+    }
+
+    public void setFriendId(String friendId) {
+        this.friendId = friendId;
+    }
+
     @Override
     public String toString() {
         return "FriendshipDto{" +
                 "id='" + id + '\'' +
                 ", friendUsername='" + friendUsername + '\'' +
+                ", friendId='" + friendId + '\'' +
                 ", status='" + status + '\'' +
                 ", createdAt=" + createdAt +
                 '}';
