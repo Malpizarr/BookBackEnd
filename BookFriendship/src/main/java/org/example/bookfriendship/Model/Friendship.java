@@ -14,6 +14,7 @@ public class Friendship {
     private String friendId;    // ID del usuario al que se le envía la solicitud
     private LocalDateTime createdAt;
     private String status;      // Ejemplo: "pending", "accepted", "declined"
+    private String PhotoUrl;
 
     public String getId() {
         return id;
@@ -49,6 +50,14 @@ public class Friendship {
 
     public String getStatus() {
         return status;
+    }
+
+    public String getPhotoUrl() {
+        return PhotoUrl;
+    }
+
+    public void setPhotoUrl(String photoUrl) {
+        PhotoUrl = photoUrl;
     }
 
     public void setStatus(String status) {

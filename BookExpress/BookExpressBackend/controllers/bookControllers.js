@@ -155,6 +155,23 @@ exports.getPageByNumber = async (req, res) => {
     }
 };
 
+exports.getAllFriendsBooks = async (req, res) => {
+    try {
+        const userId = req.userId; // Obtenido del JWT
+        const authorizationHeader = req.headers.authorization;
+
+        // Obtiene los IDs de los amigos
+        const friendIds = await bookService.getFriendIds(userId, authorizationHeader);
+
+        // Obtiene los libros de cada amigo
+        const allBooks = await bookService.getFriendsBooks(friendIds, authorizationHeader);
+
+        res.status(200).send(allBooks);
+    } catch (error) {
+        res.status(500).send({message: error.message});
+    }
+};
+
 exports.friendBooks = async (req, res) => {
     const userId = req.userId;
     const authorizationHeader = req.headers.authorization;

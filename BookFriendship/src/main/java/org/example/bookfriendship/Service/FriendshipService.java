@@ -66,16 +66,19 @@ public class FriendshipService {
                 .map(friendship -> {
                     String actualFriendId;
                     String otherUsername;
+	                String photoUrl;
 
                     if (friendship.getRequesterId().equals(userId)) {
                         actualFriendId = friendship.getFriendId();
                         otherUsername = usernameMap.getOrDefault(actualFriendId, "Unknown");
+	                    photoUrl = usernameMap.getOrDefault(actualFriendId + "_photoUrl", null);
                     } else {
                         actualFriendId = friendship.getRequesterId();
                         otherUsername = usernameMap.getOrDefault(actualFriendId, "Unknown");
+	                    photoUrl = usernameMap.getOrDefault(actualFriendId + "_photoUrl", null);
                     }
 
-                    return new FriendshipDto(friendship.getId(), otherUsername, actualFriendId, friendship.getStatus(), friendship.getCreatedAt());
+	                return new FriendshipDto(friendship.getId(), otherUsername, actualFriendId, friendship.getStatus(), friendship.getCreatedAt(), photoUrl);
                 })
                 .collect(Collectors.toList());
     }
@@ -90,16 +93,21 @@ public class FriendshipService {
                 if (response.getStatusCode().is2xxSuccessful() && response.hasBody()) {
                     Map<String, Object> userDetails = response.getBody();
                     String username = (String) userDetails.get("username");
+	                String photoUrl = (String) userDetails.get("PhotoUrl");
                     if (username != null) {
                         usernameMap.put(id, username);
+	                    if (photoUrl != null) {
+		                    usernameMap.put(id + "_photoUrl", photoUrl);
+	                    }
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace(); // Consider using a logger here
+	            e.printStackTrace();
             }
         });
         return usernameMap;
     }
+
 
     public List<FriendshipDto> getPendingFriendshipDetailsWithUsernames(String userId) {
         List<Friendship> requesterFriendships = friendshipRepository.findByRequesterIdAndStatus(userId, "pending");
@@ -116,13 +124,10 @@ public class FriendshipService {
                 .map(friendship -> {
                     String otherUserId = friendship.getRequesterId().equals(userId) ? friendship.getFriendId() : friendship.getRequesterId();
                     String otherUsername = usernameMap.getOrDefault(otherUserId, "Unknown");
+	                String photoUrl = usernameMap.getOrDefault(otherUserId + "_photoUrl", null);
 
-
-                    return new FriendshipDto(friendship.getId(), otherUsername, friendship.getFriendId(), friendship.getStatus(), friendship.getCreatedAt());
+	                return new FriendshipDto(friendship.getId(), otherUsername, otherUserId, friendship.getStatus(), friendship.getCreatedAt(), photoUrl);
                 })
                 .collect(Collectors.toList());
-
-
-
     }
 }

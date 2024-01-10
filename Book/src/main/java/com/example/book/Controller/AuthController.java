@@ -38,7 +38,7 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
             LoginResponse response = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
-            return ResponseEntity.ok(response); // This response includes the JWT token
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }

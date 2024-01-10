@@ -2,7 +2,6 @@ package org.example.bookfriendship.Controller;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
-import org.apache.catalina.User;
 import org.example.bookfriendship.Model.Friendship;
 import org.example.bookfriendship.Model.FriendshipDto;
 import org.example.bookfriendship.Repository.FriendshipRepository;
@@ -12,11 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -89,7 +85,7 @@ public class FriendshipController {
     }
 
     @GetMapping("/friends")
-    public ResponseEntity<?> getFriends( HttpServletRequest request) {
+    public ResponseEntity<?> getFriends(HttpServletRequest request) {
         try {
             String userId = jwtTokenUtil.getUserIdFromToken(jwtTokenUtil.obtenerJwtDeLaSolicitud(request));
             System.out.println(userId);

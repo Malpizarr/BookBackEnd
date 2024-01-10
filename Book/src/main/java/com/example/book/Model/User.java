@@ -3,7 +3,6 @@ package com.example.book.Model;
 import jakarta.persistence.*;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -24,6 +23,10 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles;
+
+	@Column(nullable = true)
+	private String photoUrl; // Campo para la URL de la foto del usuario
+
 
     public Set<Role> getRoles() {
         return roles;
@@ -75,6 +78,15 @@ public class User {
     public void setPassword(String password) {
         this.password = password;
     }
+
+	public String getPhotoUrl() {
+		return photoUrl;
+	}
+
+	public void setPhotoUrl(String photoUrl) {
+		this.photoUrl = photoUrl;
+	}
+
 
     public String getEmail() {
         return email;

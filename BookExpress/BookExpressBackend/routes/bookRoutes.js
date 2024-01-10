@@ -3,11 +3,12 @@ const router = express.Router();
 const bookController = require('../controllers/bookControllers'); // Asegúrate de que la ruta sea correcta
 const validateJWT = require('../middleware/verifyToken');
 
-
+// Rutas para el controlador de libros
 router.post('/create', validateJWT, bookController.createBook);
 router.get('/all', validateJWT, bookController.getUserBooks);
 router.get('/:Id/books', validateJWT, bookController.getBookByUserId);
 router.get('/:friendId/all', validateJWT, bookController.friendBooks);
+router.get('/all-friends-books', validateJWT, bookController.getAllFriendsBooks);
 router.get('/:bookId/pages', validateJWT, bookController.getPagesByBook);
 router.post('/:bookId/createPage', validateJWT, bookController.createPage);
 router.delete('/delete/:bookId', validateJWT, bookController.deleteBook);

@@ -99,14 +99,16 @@ exports.getFriendIds = async (userId, authorizationHeader) => {
 
 exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
     try {
-        const booksPromises = friendIds.map(async friendId => {
+        // Crear un conjunto de IDs únicos para evitar duplicados
+        const uniqueFriendIds = new Set(friendIds);
+
+        const booksPromises = Array.from(uniqueFriendIds).map(async friendId => {
             const username = await getUsernameById(friendId, authorizationHeader);
             const response = await fetch(`http://localhost:8081/books/${friendId}/books`, {
                 headers: { 'Authorization': authorizationHeader }
             });
             const books = await response.json();
 
-            // Verificar si la respuesta contiene un arreglo de libros
             if (!Array.isArray(books)) {
                 console.error(`Expected an array of books, got:`, books);
                 return []; // Devolver un arreglo vacío si la respuesta no es un arreglo
@@ -122,6 +124,7 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
         throw error;
     }
 };
+
 
 const getUsernameById = async (userId, authorizationHeader) => {
     try {

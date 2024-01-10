@@ -9,16 +9,26 @@ public class FriendshipDto {
     private String status;
     private LocalDateTime createdAt;
     private String friendId;
+	private String PhotoUrl;
 
-    public FriendshipDto(String id, String friendUsername, String friendId, String status, LocalDateTime createdAt) {
+	public FriendshipDto(String id, String friendUsername, String friendId, String status, LocalDateTime createdAt, String photoUrl) {
         this.id = id;
         this.friendUsername = friendUsername;
         this.friendId = friendId;
         this.status = status;
         this.createdAt = createdAt;
+		this.PhotoUrl = photoUrl;
     }
 
     // Getters y Setters
+
+	public String getPhotoUrl() {
+		return PhotoUrl;
+	}
+
+	public void setPhotoUrl(String photoUrl) {
+		PhotoUrl = photoUrl;
+	}
 
     public String getId() {
         return id;
@@ -67,7 +77,8 @@ public class FriendshipDto {
                 ", friendUsername='" + friendUsername + '\'' +
                 ", friendId='" + friendId + '\'' +
                 ", status='" + status + '\'' +
-                ", createdAt=" + createdAt +
+		        ", createdAt=" + createdAt + '\'' +
+		        ", PhotoUrl=" + PhotoUrl +
                 '}';
     }
 }
