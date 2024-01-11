@@ -1,6 +1,9 @@
 package com.example.book.Controller;
 
-import com.amazonaws.services.s3.AmazonS3;
+import com.azure.storage.file.datalake.DataLakeDirectoryClient;
+import com.azure.storage.file.datalake.DataLakeFileClient;
+import com.azure.storage.file.datalake.DataLakeFileSystemClient;
+import com.azure.storage.file.datalake.DataLakeServiceClient;
 import com.example.book.Model.User;
 import com.example.book.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,13 +25,17 @@ public class UserController {
 
 
     @Autowired
-    private AmazonS3 s3Client;
+    private DataLakeServiceClient dataLakeServiceClient;
+
+    @Value("${azure.storage.file-system-name}")
+    private String fileSystemName;
+
+    @Value("${azure.storage.account-name}")
+    private String accountName;
 
     @Autowired
     private UserService userService;
 
-    @Value("${aws.s3.bucket}")
-    private String bucketName;
 
     @PostMapping("/create")
     public User createUser(@RequestBody User newUser) {
@@ -65,11 +74,37 @@ public class UserController {
                 return ResponseEntity.notFound().build();
             }
 
+            // Obtener el nombre del archivo existente
+            String existingPhotoUrl = user.getPhotoUrl();
+            String existingFilename = null;
+            if (existingPhotoUrl != null && !existingPhotoUrl.isEmpty()) {
+                existingFilename = existingPhotoUrl.substring(existingPhotoUrl.lastIndexOf('/') + 1);
+            }
+
+            // Eliminar la foto existente si está presente
+            DataLakeFileSystemClient fileSystemClient = null;
+            if (existingFilename != null) {
+                fileSystemClient = dataLakeServiceClient.getFileSystemClient(fileSystemName);
+                DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("user-photos");
+                if (directoryClient.exists()) {
+                    DataLakeFileClient fileClientToDelete = directoryClient.getFileClient(existingFilename);
+                    if (fileClientToDelete.exists()) {
+                        fileClientToDelete.delete();
+                    }
+                }
+            }
+
+            // Subir la nueva imagen
             String filename = userId + "_" + file.getOriginalFilename();
-            s3Client.putObject(bucketName, filename, file.getInputStream(), null);
+            DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("user-photos");
+            DataLakeFileClient fileClient = directoryClient.createFile(filename);
 
-            String fileUrl = "https://" + bucketName + ".s3.amazonaws.com/" + filename;
+            try (InputStream inputStream = new BufferedInputStream(file.getInputStream())) {
+                fileClient.append(inputStream, 0, file.getSize());
+                fileClient.flush(file.getSize());
+            }
 
+            String fileUrl = String.format("https://%s.blob.core.windows.net/%s/user-photos/%s", accountName, fileSystemName, filename);
             user.setPhotoUrl(fileUrl);
             userService.updateUser(userId, user);
 
