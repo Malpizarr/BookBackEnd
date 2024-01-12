@@ -6,6 +6,8 @@ import com.azure.storage.file.datalake.DataLakeFileSystemClient;
 import com.azure.storage.file.datalake.DataLakeServiceClient;
 import com.example.book.Model.User;
 import com.example.book.Service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -23,28 +25,41 @@ import java.util.Map;
 @RequestMapping("/users")
 public class UserController {
 
+	private final DataLakeServiceClient dataLakeServiceClient;
+	private final UserService userService;
+	private final String fileSystemName;
+	private final String accountName;
+	private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
 
     @Autowired
-    private DataLakeServiceClient dataLakeServiceClient;
+    public UserController(DataLakeServiceClient dataLakeServiceClient,
+                          UserService userService,
+                          @Value("${azure.storage.file-system-name}") String fileSystemName,
+                          @Value("${azure.storage.account-name}") String accountName) {
+	    this.dataLakeServiceClient = dataLakeServiceClient;
+	    this.userService = userService;
+	    this.fileSystemName = fileSystemName;
+	    this.accountName = accountName;
+    }
 
-    @Value("${azure.storage.file-system-name}")
-    private String fileSystemName;
+	public static class UserNotFoundException extends RuntimeException {
+		public UserNotFoundException(String message) {
+			super(message);
+		}
+	}
 
-    @Value("${azure.storage.account-name}")
-    private String accountName;
-
-    @Autowired
-    private UserService userService;
 
 
     @PostMapping("/create")
     public User createUser(@RequestBody User newUser) {
+	    log.info("Creating new user");
         return userService.createUser(newUser);
     }
 
-
     @GetMapping("/{userId}")
     public ResponseEntity<Map<String, String>> getUserById(@PathVariable String userId) {
+	    log.info("Fetching user with ID {}", userId);
         User user = userService.findUserById(userId);
         if (user != null) {
             Map<String, String> userInfo = new HashMap<>();
@@ -52,22 +67,29 @@ public class UserController {
             userInfo.put("PhotoUrl", user.getPhotoUrl());
             return ResponseEntity.ok(userInfo);
         } else {
+	        log.warn("User with ID {} not found", userId);
             return ResponseEntity.notFound().build();
         }
     }
 
     @PutMapping("/update/{userId}")
     public ResponseEntity<User> updateUser(@PathVariable String userId, @RequestBody User userDetails) {
+	    log.info("Updating user with ID {}", userId);
         try {
             User updatedUser = userService.updateUser(userId, userDetails);
             return ResponseEntity.ok(updatedUser);
+        } catch (UserNotFoundException e) {
+	        log.error("User not found for ID {}: {}", userId, e.getMessage());
+	        return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+	        log.error("Error updating user with ID {}: {}", userId, e.getMessage());
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @PostMapping("/uploadPhoto/{userId}")
     public ResponseEntity<?> uploadUserPhoto(@PathVariable String userId, @RequestParam("file") MultipartFile file) {
+	    log.info("Uploading photo for user with ID {}", userId);
         try {
             User user = userService.findUserById(userId);
             if (user == null) {
@@ -96,7 +118,8 @@ public class UserController {
 
             // Subir la nueva imagen
             String filename = userId + "_" + file.getOriginalFilename();
-            DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("user-photos");
+	        assert fileSystemClient != null;
+	        DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("user-photos");
             DataLakeFileClient fileClient = directoryClient.createFile(filename);
 
             try (InputStream inputStream = new BufferedInputStream(file.getInputStream())) {
@@ -112,7 +135,7 @@ public class UserController {
             response.put("photoUrl", fileUrl);
             return ResponseEntity.ok(response);
         } catch (IOException e) {
-            e.printStackTrace();
+	        log.error("Error uploading photo for user ID {}: {}", userId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error al subir la imagen: " + e.getMessage());
         }
