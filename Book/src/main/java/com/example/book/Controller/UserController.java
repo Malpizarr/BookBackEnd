@@ -102,9 +102,7 @@ public class UserController {
             if (existingPhotoUrl != null && !existingPhotoUrl.isEmpty()) {
                 existingFilename = existingPhotoUrl.substring(existingPhotoUrl.lastIndexOf('/') + 1);
             }
-
-            // Eliminar la foto existente si está presente
-            DataLakeFileSystemClient fileSystemClient = null;
+	        DataLakeFileSystemClient fileSystemClient = dataLakeServiceClient.getFileSystemClient(fileSystemName);
             if (existingFilename != null) {
                 fileSystemClient = dataLakeServiceClient.getFileSystemClient(fileSystemName);
                 DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("user-photos");

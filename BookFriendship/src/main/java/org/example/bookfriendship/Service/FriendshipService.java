@@ -89,7 +89,7 @@ public class FriendshipService {
         Map<String, String> usernameMap = new HashMap<>();
         userIds.forEach(id -> {
             try {
-                ResponseEntity<Map> response = restTemplate.getForEntity("http://localhost:8081/users/" + id, Map.class);
+	            ResponseEntity<Map> response = restTemplate.getForEntity("https://bookgateway.mangotree-fab2eccd.eastus.azurecontainerapps.io/users/" + id, Map.class);
                 if (response.getStatusCode().is2xxSuccessful() && response.hasBody()) {
                     Map<String, Object> userDetails = response.getBody();
                     String username = (String) userDetails.get("username");
@@ -130,4 +130,14 @@ public class FriendshipService {
                 })
                 .collect(Collectors.toList());
     }
+
+	public boolean areFriends(String userId1, String userId2) {
+		List<Friendship> friendshipsAsRequester = friendshipRepository.findByRequesterIdAndFriendId(userId1, userId2);
+		List<Friendship> friendshipsAsFriend = friendshipRepository.findByFriendIdAndRequesterId(userId1, userId2);
+
+		return Stream.concat(friendshipsAsRequester.stream(), friendshipsAsFriend.stream())
+				.anyMatch(f -> f.getStatus().equals("accepted"));
+	}
 }
+
+

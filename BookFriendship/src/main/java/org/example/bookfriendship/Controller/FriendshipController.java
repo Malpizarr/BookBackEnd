@@ -73,6 +73,17 @@ public class FriendshipController {
         }
     }
 
+    @GetMapping("/areFriends/{userId1}/{userId2}")
+    public ResponseEntity<Boolean> areFriends(@PathVariable String userId1, @PathVariable String userId2) {
+        try {
+            boolean areFriends = friendshipService.areFriends(userId1, userId2);
+            return ResponseEntity.ok(areFriends);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(false);
+        }
+    }
+
     @GetMapping("/pending")
     public ResponseEntity<?> getPending(HttpServletRequest request) {
         try {
