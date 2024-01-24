@@ -62,7 +62,13 @@ public class SecurityConfig {
                                 String name = (String) (attributes.containsKey("name") ? attributes.get("name") : "");
 
                                 User user = customOAuth2UserService.processUserDetails(email, name);
-                                String token = jwtTokenUtil.createToken(user.getId());
+                                String token = jwtTokenUtil.createToken(
+                                        user.getId(),    // ID del usuario
+                                        user.getUsername(),    // Nombre de usuario
+                                        user.getEmail(),    // Email
+                                        user.getCreatedAt(),    // Fecha de creación
+                                        user.getPhotoUrl()    // URL de la foto
+                                );
 
                                 // Enviar token y username como parte de la URL
                                 response.sendRedirect("http://localhost:3000?token=" + token + "&username=" + user.getUsername());

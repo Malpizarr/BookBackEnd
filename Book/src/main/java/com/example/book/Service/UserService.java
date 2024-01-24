@@ -73,7 +73,13 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("Invalid password");
         }
 
-        String token = jwtTokenUtil.createToken(user.getId());
+        String token = jwtTokenUtil.createToken(
+                user.getId(),    // ID del usuario
+                user.getUsername(),    // Nombre de usuario
+                user.getEmail(),    // Email
+                user.getCreatedAt(),    // Fecha de creación
+                user.getPhotoUrl()    // URL de la foto
+        );
         return new LoginResponse(token);
     }
 
