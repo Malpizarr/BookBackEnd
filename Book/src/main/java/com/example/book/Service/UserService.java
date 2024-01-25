@@ -1,5 +1,6 @@
 package com.example.book.Service;
 
+import com.example.book.Model.CustomUserDetails;
 import com.example.book.Model.LoginResponse;
 import com.example.book.Model.Role;
 import com.example.book.Model.User;
@@ -73,22 +74,20 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("Invalid password");
         }
 
-        String token = jwtTokenUtil.createToken(
-                user.getId(),    // ID del usuario
-                user.getUsername(),    // Nombre de usuario
-                user.getEmail(),    // Email
-                user.getCreatedAt(),    // Fecha de creación
-                user.getPhotoUrl()    // URL de la foto
-        );
-        return new LoginResponse(token);
+        String accessToken = jwtTokenUtil.createToken(user);
+
+        return new LoginResponse(accessToken);
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), new ArrayList<>());
+
+        // Asegúrate de que tu clase CustomUserDetails acepte los parámetros necesarios en su constructor
+        return new CustomUserDetails(user.getUsername(), user.getPassword(), new ArrayList<>(), user.getId());
     }
+
 
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)

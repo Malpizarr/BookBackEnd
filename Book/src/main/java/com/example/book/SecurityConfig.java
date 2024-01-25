@@ -47,9 +47,8 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeRequests(auth -> auth
-                        .requestMatchers("/auth/*", "/error", "/oauth2/**", "/uploads/**").permitAll()
-                        .requestMatchers("/users/**").authenticated()
-                        .anyRequest().authenticated())
+		                .requestMatchers("/auth/**", "/error", "/oauth2/**", "/uploads/**").permitAll()
+		                .requestMatchers("/users/**").authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Agregar filtro JWT
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
@@ -62,13 +61,7 @@ public class SecurityConfig {
                                 String name = (String) (attributes.containsKey("name") ? attributes.get("name") : "");
 
                                 User user = customOAuth2UserService.processUserDetails(email, name);
-                                String token = jwtTokenUtil.createToken(
-                                        user.getId(),    // ID del usuario
-                                        user.getUsername(),    // Nombre de usuario
-                                        user.getEmail(),    // Email
-                                        user.getCreatedAt(),    // Fecha de creación
-                                        user.getPhotoUrl()    // URL de la foto
-                                );
+	                            String token = jwtTokenUtil.createToken(user);
 
                                 // Enviar token y username como parte de la URL
                                 response.sendRedirect("http://localhost:3000?token=" + token + "&username=" + user.getUsername());

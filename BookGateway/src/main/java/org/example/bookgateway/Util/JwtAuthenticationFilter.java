@@ -1,13 +1,10 @@
 package org.example.bookgateway.Util;
 
-import io.jsonwebtoken.Claims;
-import org.example.bookgateway.Util.JwtTokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -24,7 +21,7 @@ public class JwtAuthenticationFilter implements GatewayFilter {
         String path = request.getURI().getPath();
 
         // Excluir las rutas de login y registro de la autenticación
-        if (path.startsWith("/auth/login") || path.startsWith("/auth/register")) {
+	    if (path.startsWith("/auth/login") || path.startsWith("/auth/register") || path.startsWith("/auth/refresh-token")) {
             return chain.filter(exchange);
         }
 

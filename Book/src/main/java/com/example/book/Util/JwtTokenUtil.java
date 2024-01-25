@@ -1,6 +1,7 @@
 package com.example.book.Util;
 
 import com.example.book.Model.CustomUserDetails;
+import com.example.book.Model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -30,13 +31,13 @@ public class JwtTokenUtil {
         this.key = new SecretKeySpec(keyBytes, SignatureAlgorithm.HS256.getJcaName());
     }
 
-    public String createToken(String userId, String username, String email, Date createdAt, String photoUrl) {
-        Claims claims = Jwts.claims().setSubject(userId);
-        claims.put("userId", userId);
-        claims.put("username", username);
-        claims.put("email", email);
-        claims.put("createdAt", createdAt);
-        claims.put("photoUrl", photoUrl);
+    public String createToken(User user) {
+        Claims claims = Jwts.claims().setSubject(user.getId());
+        claims.put("userId", user.getId());
+        claims.put("username", user.getUsername());
+        claims.put("email", user.getEmail());
+        claims.put("createdAt", user.getCreatedAt());
+        claims.put("photoUrl", user.getPhotoUrl());
 
         Date now = new Date();
         Date validity = new Date(now.getTime() + validityInMilliseconds);
@@ -70,11 +71,30 @@ public class JwtTokenUtil {
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
-        final String userIdFromToken = getUserIdFromToken(token);
-        String userIdFromUserDetails = ((CustomUserDetails) userDetails).getUserId();
+        try {
+            final String userIdFromToken = getUserIdFromToken(token);
+            String userIdFromUserDetails = ((CustomUserDetails) userDetails).getUserId();
 
-        return (userIdFromToken.equals(userIdFromUserDetails) && !isTokenExpired(token));
+            // Comprueba si el ID del usuario del token coincide con el ID del usuario de UserDetails y si el token no ha expirado
+            return (userIdFromToken.equals(userIdFromUserDetails) && !isTokenExpired(token));
+        } catch (Exception e) {
+            return false;
+        }
     }
+
+    public boolean validateRefreshToken(String token, UserDetails userDetails) {
+        try {
+            final String userIdFromToken = getUserIdFromToken(token);
+            String userIdFromUserDetails = ((CustomUserDetails) userDetails).getUserId();
+
+            // Comprueba si el ID del usuario del token coincide con el ID del usuario de UserDetails y si el token no ha expirado
+            return (userIdFromToken.equals(userIdFromUserDetails) && !isTokenExpired(token));
+        } catch (Exception e) {
+            System.out.println("Error al validar refresh token: " + e.getMessage());
+            return false;
+        }
+    }
+
 
 
 
@@ -95,5 +115,24 @@ public class JwtTokenUtil {
                 .parseClaimsJws(jwtToken)
                 .getBody()
                 .getSubject();
+    }
+
+    public String createRefreshToken(User user) {
+        Claims claims = Jwts.claims().setSubject(user.getId());
+        claims.put("userId", user.getId());
+        claims.put("username", user.getUsername());
+        claims.put("email", user.getEmail());
+        claims.put("createdAt", user.getCreatedAt());
+        claims.put("photoUrl", user.getPhotoUrl());
+
+        Date now = new Date();
+        Date validity = new Date(now.getTime() + validityInMilliseconds);
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setIssuedAt(now)
+                .setExpiration(validity)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
     }
 }
