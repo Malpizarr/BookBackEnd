@@ -52,6 +52,7 @@ public class AuthController {
             refreshCookie.setPath("/");
             refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
 
+            //Asignar la cookie al objeto HttpServletResponse
             String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
                     refreshCookie.getName() + "=" + refreshToken,
                     "Max-Age=" + refreshCookie.getMaxAge(),
