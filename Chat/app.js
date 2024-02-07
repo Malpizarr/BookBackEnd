@@ -122,7 +122,7 @@ wss.on('connection', function connection(ws, req) {
 
         try {
             // Realiza la consulta HTTP
-            const response = await axios.get(`https://bookgateway.mangotree-fab2eccd.eastus.azurecontainerapps.io/api/friendships/friends`, {
+            const response = await axios.get(`http://localhost:8081/api/friendships/friends`, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
 

@@ -85,7 +85,7 @@ exports.getBookByUserId = async (userId) => {
 
 exports.getFriendIds = async (userId, authorizationHeader) => {
     try {
-        const response = await fetch(`https://bookgateway.mangotree-fab2eccd.eastus.azurecontainerapps.io/api/friendships/friends`, {
+        const response = await fetch(`http://localhost:8081/api/friendships/friends`, {
             headers: { 'Authorization': authorizationHeader }
         });
         const friendsData = await response.json();
@@ -104,7 +104,7 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
 
         const booksPromises = Array.from(uniqueFriendIds).map(async friendId => {
             const username = await getUsernameById(friendId, authorizationHeader);
-            const response = await fetch(`https://bookgateway.mangotree-fab2eccd.eastus.azurecontainerapps.io/books/${friendId}/books`, {
+            const response = await fetch(`http://localhost:8081/books/${friendId}/books`, {
                 headers: { 'Authorization': authorizationHeader }
             });
             const books = await response.json();
@@ -128,7 +128,7 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
 
 const getUsernameById = async (userId, authorizationHeader) => {
     try {
-        const response = await fetch(`https://bookgateway.mangotree-fab2eccd.eastus.azurecontainerapps.io/users/${userId}`, {
+        const response = await fetch(`http://localhost:8081/users/${userId}`, {
             headers: { 'Authorization': authorizationHeader }
         });
         const userData = await response.json();

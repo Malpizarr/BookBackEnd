@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -115,4 +116,15 @@ public class UserService implements UserDetailsService {
     }
 
 
+	public User searchUsers(String username) {
+
+		User user = userRepository.findByUsername(username)
+				.or(() -> userRepository.findByEmail(username))
+				.orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+		return user;
+	}
+
+	public List<User> searchUsersByUsername(String username) {
+		return userRepository.findByUsernameContaining(username);
+	}
 }

@@ -78,7 +78,7 @@ public class FriendshipService {
 	                    photoUrl = usernameMap.getOrDefault(actualFriendId + "_photoUrl", null);
                     }
 
-	                return new FriendshipDto(friendship.getId(), otherUsername, actualFriendId, friendship.getStatus(), friendship.getCreatedAt(), photoUrl);
+	                return new FriendshipDto(friendship.getId(), friendship.getRequesterId(), otherUsername, actualFriendId, friendship.getStatus(), friendship.getCreatedAt(), photoUrl);
                 })
                 .collect(Collectors.toList());
     }
@@ -89,7 +89,7 @@ public class FriendshipService {
         Map<String, String> usernameMap = new HashMap<>();
         userIds.forEach(id -> {
             try {
-	            ResponseEntity<Map> response = restTemplate.getForEntity("https://bookgateway.mangotree-fab2eccd.eastus.azurecontainerapps.io/users/" + id, Map.class);
+	            ResponseEntity<Map> response = restTemplate.getForEntity("http://localhost:8081/users/" + id, Map.class);
                 if (response.getStatusCode().is2xxSuccessful() && response.hasBody()) {
                     Map<String, Object> userDetails = response.getBody();
                     String username = (String) userDetails.get("username");
@@ -113,22 +113,33 @@ public class FriendshipService {
         List<Friendship> requesterFriendships = friendshipRepository.findByRequesterIdAndStatus(userId, "pending");
         List<Friendship> friendFriendships = friendshipRepository.findByFriendIdAndStatus(userId, "pending");
 
-        Set<String> userIds = Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
-                .map(friendship -> Arrays.asList(friendship.getRequesterId(), friendship.getFriendId()))
-                .flatMap(List::stream)
-                .collect(Collectors.toSet());
+	    Set<String> userIds = Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
+			    .map(friendship -> Arrays.asList(friendship.getRequesterId(), friendship.getFriendId()))
+			    .flatMap(List::stream)
+			    .collect(Collectors.toSet());
 
-        Map<String, String> usernameMap = fetchUsernames(userIds);
+	    Map<String, String> usernameMap = fetchUsernames(userIds);
 
-        return Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
-                .map(friendship -> {
-                    String otherUserId = friendship.getRequesterId().equals(userId) ? friendship.getFriendId() : friendship.getRequesterId();
-                    String otherUsername = usernameMap.getOrDefault(otherUserId, "Unknown");
-	                String photoUrl = usernameMap.getOrDefault(otherUserId + "_photoUrl", null);
+	    return Stream.concat(requesterFriendships.stream(), friendFriendships.stream())
+			    .map(friendship -> {
+				    String actualFriendId;
+				    String otherUsername;
+				    String photoUrl;
+				    String requesterId = friendship.getRequesterId();
 
-	                return new FriendshipDto(friendship.getId(), otherUsername, otherUserId, friendship.getStatus(), friendship.getCreatedAt(), photoUrl);
-                })
-                .collect(Collectors.toList());
+				    if (friendship.getRequesterId().equals(userId)) {
+					    actualFriendId = friendship.getFriendId();
+					    otherUsername = usernameMap.getOrDefault(actualFriendId, "Unknown");
+					    photoUrl = usernameMap.getOrDefault(actualFriendId + "_photoUrl", null);
+				    } else {
+					    actualFriendId = friendship.getRequesterId();
+					    otherUsername = usernameMap.getOrDefault(actualFriendId, "Unknown");
+					    photoUrl = usernameMap.getOrDefault(actualFriendId + "_photoUrl", null);
+				    }
+
+				    return new FriendshipDto(friendship.getId(), requesterId, otherUsername, actualFriendId, friendship.getStatus(), friendship.getCreatedAt(), photoUrl);
+			    })
+			    .collect(Collectors.toList());
     }
 
 	public boolean areFriends(String userId1, String userId2) {

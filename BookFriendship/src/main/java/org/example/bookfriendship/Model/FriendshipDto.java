@@ -5,19 +5,22 @@ import java.time.LocalDateTime;
 public class FriendshipDto {
 
     private String id;
+    private String requesterId;
     private String friendUsername;
     private String status;
     private LocalDateTime createdAt;
     private String friendId;
 	private String PhotoUrl;
 
-	public FriendshipDto(String id, String friendUsername, String friendId, String status, LocalDateTime createdAt, String photoUrl) {
+    public FriendshipDto(String id, String requesterId, String friendUsername, String friendId, String status, LocalDateTime createdAt, String photoUrl) {
         this.id = id;
+        this.requesterId = requesterId;
         this.friendUsername = friendUsername;
         this.friendId = friendId;
         this.status = status;
         this.createdAt = createdAt;
 		this.PhotoUrl = photoUrl;
+
     }
 
     // Getters y Setters
@@ -25,6 +28,14 @@ public class FriendshipDto {
 	public String getPhotoUrl() {
 		return PhotoUrl;
 	}
+
+    public String getRequesterId() {
+        return requesterId;
+    }
+
+    public void setRequesterId(String requesterId) {
+        this.requesterId = requesterId;
+    }
 
 	public void setPhotoUrl(String photoUrl) {
 		PhotoUrl = photoUrl;

@@ -38,8 +38,9 @@ public class FriendshipController {
         return ResponseEntity.ok(friendships);
     }
 
-    @PutMapping("/{friendshipId}/accept")
-    public ResponseEntity<?> acceptFriendship(@PathVariable String friendshipId) {
+    @PutMapping("/accept")
+    public ResponseEntity<?> acceptFriendship(@RequestParam String friendshipId) {
+        System.out.println(friendshipId);
         try {
             Friendship acceptedFriendship = friendshipService.acceptFriendship(friendshipId);
             return ResponseEntity.ok(acceptedFriendship);
@@ -63,10 +64,10 @@ public class FriendshipController {
     }
 
 
-    @PostMapping("/{requesterId}/{friendId}")
-    public ResponseEntity<?> createFriendship(@PathVariable String requesterId, @PathVariable String friendId) {
+    @PostMapping("/createfriendship")
+    public ResponseEntity<?> createFriendship(@RequestBody Friendship newFriendship) {
         try {
-            Friendship friendship = friendshipService.createFriendship(requesterId, friendId);
+            Friendship friendship = friendshipService.createFriendship(newFriendship.getRequesterId(), newFriendship.getFriendId());
             return ResponseEntity.status(HttpStatus.CREATED).body(friendship);
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
@@ -99,7 +100,6 @@ public class FriendshipController {
     public ResponseEntity<?> getFriends(HttpServletRequest request) {
         try {
             String userId = jwtTokenUtil.getUserIdFromToken(jwtTokenUtil.obtenerJwtDeLaSolicitud(request));
-            System.out.println(userId);
             List<FriendshipDto> friendshipsWithUsernames = friendshipService.getFriendshipDetailsWithUsernames(userId);
             return ResponseEntity.ok(friendshipsWithUsernames);
         } catch (Exception e) {

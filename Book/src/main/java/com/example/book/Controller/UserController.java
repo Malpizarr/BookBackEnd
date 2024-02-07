@@ -5,6 +5,7 @@ import com.azure.storage.file.datalake.DataLakeFileClient;
 import com.azure.storage.file.datalake.DataLakeFileSystemClient;
 import com.azure.storage.file.datalake.DataLakeServiceClient;
 import com.example.book.Model.User;
+import com.example.book.Model.UserDto;
 import com.example.book.Service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,9 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/users")
@@ -138,6 +141,23 @@ public class UserController {
                     .body("Error al subir la imagen: " + e.getMessage());
         }
     }
+
+	@GetMapping("/search")
+	public ResponseEntity<?> searchUsers(@RequestParam String username) {
+		log.info("Searching for users with username {}", username);
+		try {
+			List<User> users = userService.searchUsersByUsername(username);
+			// Convierte la lista de User a una lista de UserDto
+			List<UserDto> userDtos = users.stream()
+					.map(user -> new UserDto(user.getId(), user.getUsername(), user.getPhotoUrl()))
+					.collect(Collectors.toList());
+			return ResponseEntity.ok(userDtos);
+		} catch (Exception e) {
+			log.error("Error searching for users with username {}: {}", username, e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
 
 }
 

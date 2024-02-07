@@ -3,6 +3,7 @@ package com.example.book;
 import com.example.book.Model.User;
 import com.example.book.Service.CustomOAuth2UserService;
 import com.example.book.Util.JwtTokenUtil;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,25 @@ public class SecurityConfig {
 
                                 User user = customOAuth2UserService.processUserDetails(email, name);
 	                            String token = jwtTokenUtil.createToken(user);
+	                            String refreshToken = jwtTokenUtil.createRefreshToken(user);
+
+	                            Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+	                            refreshCookie.setHttpOnly(true);
+	                            refreshCookie.setSecure(true);
+	                            refreshCookie.setPath("/");
+	                            refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
+
+	                            //Asignar la cookie al objeto HttpServletResponse
+	                            String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
+			                            refreshCookie.getName() + "=" + refreshToken,
+			                            "Max-Age=" + refreshCookie.getMaxAge(),
+			                            "Path=" + refreshCookie.getPath(),
+			                            "HttpOnly",
+			                            "Secure",
+			                            "SameSite=Strict"); // Puedes cambiar a "Strict" según tus necesidades
+
+	                            // Crear cookie para el refreshToken
+	                            response.addHeader("Set-Cookie", cookieValue);
 
                                 // Enviar token y username como parte de la URL
                                 response.sendRedirect("http://localhost:3000?token=" + token + "&username=" + user.getUsername());
