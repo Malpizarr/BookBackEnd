@@ -45,16 +45,22 @@ public class AuthController {
 
             String refreshToken = jwtTokenUtil.createRefreshToken(user);
 
+            // Crear cookie para el refreshToken
             Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-            refreshCookie.setHttpOnly(true); // La cookie no es accesible desde JavaScript
-            refreshCookie.setSecure(true);   // La cookie solo se envía con solicitudes HTTPS
-            refreshCookie.setPath("/");      // La cookie está disponible para todas las rutas
+            refreshCookie.setHttpOnly(true);
+            refreshCookie.setSecure(true);
+            refreshCookie.setPath("/");
+            refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
 
-            // Opcional: Configurar la expiración de la cookie para que coincida con la del token
-            refreshCookie.setMaxAge(7 * 24 * 60 * 60); // Por ejemplo, 7 días en segundos
+            String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
+                    refreshCookie.getName() + "=" + refreshToken,
+                    "Max-Age=" + refreshCookie.getMaxAge(),
+                    "Path=" + refreshCookie.getPath(),
+                    "HttpOnly",
+                    "Secure",
+                    "SameSite=Strict"); // Puedes cambiar a "Strict" según tus necesidades
 
-            // Agregar la cookie al objeto HttpServletResponse
-            httpServletResponse.addCookie(refreshCookie);
+            httpServletResponse.addHeader("Set-Cookie", cookieValue);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -84,7 +90,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse httpServletResponse) {
         String refreshToken = null;
 
         // Extraer el refresh token de las cookies
@@ -114,6 +120,17 @@ public class AuthController {
             }
 
             String newAccessToken = jwtTokenUtil.createToken(user);
+
+            Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+            refreshCookie.setHttpOnly(true); // La cookie no es accesible desde JavaScript
+            refreshCookie.setSecure(true);   // La cookie solo se envía con solicitudes HTTPS
+            refreshCookie.setPath("/");      // La cookie está disponible para todas las rutas
+
+            // Opcional: Configurar la expiración de la cookie para que coincida con la del token
+            refreshCookie.setMaxAge(7 * 24 * 60 * 60); //7 días en segundos
+
+            // Agregar la cookie al objeto HttpServletResponse
+            httpServletResponse.addCookie(refreshCookie);
             return ResponseEntity.ok(new LoginResponse(newAccessToken));
         } catch (JwtException e) {
             // Manejar específicamente las excepciones relacionadas con JWT
@@ -129,7 +146,7 @@ public class AuthController {
         // Crear una cookie con el mismo nombre que la cookie del refresh token
         Cookie cookie = new Cookie("refreshToken", null);
         cookie.setHttpOnly(true);
-        cookie.setSecure(true); // Si estás usando HTTPS
+        cookie.setSecure(true);
         cookie.setPath("/");
         cookie.setMaxAge(0); // Establecer la edad de la cookie a 0 para eliminarla
 
