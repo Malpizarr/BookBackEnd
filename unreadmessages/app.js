@@ -47,9 +47,9 @@ app.get('/chat/unread-messages', ValidateTokenJWT, async (req, res) => {
     const userId = req.userId; // Asume que esto se obtiene de algún modo, por ejemplo, de un token JWT
 
     const query = `
-        SELECT senderId, COUNT(*) as unreadCount 
-        FROM messages 
-        WHERE receiverId = ? AND is_read = FALSE 
+        SELECT senderId, COUNT(*) as unreadCount
+        FROM messages
+        WHERE receiverId = ? AND is_read = FALSE
         GROUP BY senderId`;
 
     try {
@@ -68,8 +68,8 @@ app.post('/chat/reset-unread-messages', ValidateTokenJWT, async (req, res) => {
     console.log("Resetting unread messages", {senderId, receiverId});
 
     const updateQuery = `
-        UPDATE messages 
-        SET is_read = TRUE 
+        UPDATE messages
+        SET is_read = TRUE
         WHERE senderId = ? AND receiverId = ?`;
 
     try {

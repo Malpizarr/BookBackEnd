@@ -6,8 +6,20 @@ const validateJWT = require('./middleware/verifyToken');
 const bookRoutes = require('./routes/bookRoutes');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const mongoose = require('mongoose');
-
+const cookieParser = require('cookie-parser');
 const app = express();
+const {redisClient, getAsync, setAsync, connectRedis} = require('./middleware/redisClient');
+
+
+connectRedis().then(() => {
+    console.log("Connected to Redis");
+    // Tu lógica de aplicación que depende de Redis va aquí
+}).catch((err) => {
+    console.error("Error connecting to Redis:", err);
+});
+
+
+app.use(cookieParser());
 
 
 app.use(bodyParser.json());
@@ -46,4 +58,5 @@ client.connect()
         console.error("Failed to connect to MongoDB!", err);
         process.exit(1);
     });
-module.exports = client;
+
+module.exports = {redisClient, client};

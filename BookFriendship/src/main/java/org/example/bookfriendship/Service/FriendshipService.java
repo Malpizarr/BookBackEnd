@@ -149,6 +149,13 @@ public class FriendshipService {
 		return Stream.concat(friendshipsAsRequester.stream(), friendshipsAsFriend.stream())
 				.anyMatch(f -> f.getStatus().equals("accepted"));
 	}
+
+	public void deleteFriendship(String friendshipId) {
+		Friendship friendship = friendshipRepository.findById(friendshipId)
+				.orElseThrow(() -> new RuntimeException("No se encontró la amistad"));
+
+		friendshipRepository.delete(friendship);
+	}
 }
 
 

@@ -1,5 +1,6 @@
 package com.example.book.Service;
 
+import com.example.book.Controller.UserController;
 import com.example.book.Model.CustomUserDetails;
 import com.example.book.Model.LoginResponse;
 import com.example.book.Model.Role;
@@ -14,10 +15,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 
@@ -102,15 +100,17 @@ public class UserService implements UserDetailsService {
 
     public User findUserById(String userId) {
         return userRepository.findById(userId)
+		        .or(() -> userRepository.findByUsername(userId))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 
     public User updateUser(String userId, User userDetails) {
         User user = userRepository.findById(userId)
+		        .or(() -> userRepository.findByUsername(userId))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         user.setUsername(userDetails.getUsername());
         user.setEmail(userDetails.getEmail());
-
+	    user.setPhotoUrl(userDetails.getPhotoUrl());
 
         return userRepository.save(user);
     }
@@ -124,7 +124,40 @@ public class UserService implements UserDetailsService {
 		return user;
 	}
 
-	public List<User> searchUsersByUsername(String username) {
-		return userRepository.findByUsernameContaining(username);
+	public List<User> searchUsersByUsername(String username, String currentUser) {
+		List<User> users = userRepository.findByUsernameContaining(username);
+		if (users.isEmpty()) {
+			throw new RuntimeException("Usuario no encontrado");
+		}
+
+		// Usar Iterator para evitar ConcurrentModificationException
+		Iterator<User> iterator = users.iterator();
+		while (iterator.hasNext()) {
+			User user = iterator.next();
+			// Comparar ignorando mayúsculas/minúsculas si es necesario
+			if (user.getUsername().equalsIgnoreCase(currentUser)) {
+				iterator.remove(); // Eliminar el usuario actual de la lista
+			}
+		}
+
+
+		return users;
+	}
+
+	public void updatePassword(String userId, String oldPassword, String newPassword) throws Exception {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new UserController.UserNotFoundException("Usuario no encontrado"));
+
+		if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+			throw new Exception("La contraseña actual es incorrecta");
+		}
+
+		user.setPassword(passwordEncoder.encode(newPassword));
+		userRepository.save(user);
+	}
+
+
+	public void deleteUser(String userId) {
+		userRepository.deleteById(userId);
 	}
 }

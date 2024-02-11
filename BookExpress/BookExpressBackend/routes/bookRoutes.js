@@ -16,5 +16,6 @@ router.delete('/:bookId/deletePage/:pageNumber', validateJWT, bookController.del
 router.put('/update/:bookId', validateJWT, bookController.updateBook);
 router.put('/:bookId/updatePage/:pageNumber', validateJWT, bookController.updatePage);
 router.get('/:bookId/page/:pageNumber',validateJWT, bookController.getPageByNumber);
+router.get('/:bookId', validateJWT, bookController.getBookById);
 
 module.exports = router;

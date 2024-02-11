@@ -1,4 +1,5 @@
 
+
 const Book = require('../models/book');
 const Page = require('../models/page');
 const bookService = require('../services/bookService');
@@ -20,6 +21,35 @@ exports.createBook = async (req, res) => {
         res.status(500).send({ message: error.message });
     }
 };
+
+// Controlador
+exports.getBookById = async (req, res) => {
+    try {
+        const bookId = req.params.bookId;
+        const book = await bookService.getBookById(bookId);
+
+        const userId = req.userId;
+
+        console.log("User:", userId + "Book:", book);
+
+        if (!book) {
+            return res.status(404).send({message: 'Book not found'});
+        }
+
+        const isOwner = book.userId === userId;
+
+        console.log("Is owner:", isOwner);
+
+        if (book.status === 'Private' && !isOwner) {
+            return res.status(403).send({message: 'Access denied. This book is private and you are not the owner.'});
+        }
+
+        res.status(200).send(book);
+    } catch (error) {
+        res.status(500).send({message: error.message});
+    }
+};
+
 
 exports.getBookByUserId = async (req, res) => {
     try {
@@ -81,7 +111,7 @@ exports.createPage = async (req, res) => {
 
 exports.deleteBook = async (req, res) => {
     try {
-        await bookService.deleteBook(req.params.bookId);
+        await bookService.deleteBook(req.params.bookId, req.userId);
         res.status(200).send({ message: 'Book deleted successfully' });
     } catch (error) {
         res.status(404).send({ message: error.message });

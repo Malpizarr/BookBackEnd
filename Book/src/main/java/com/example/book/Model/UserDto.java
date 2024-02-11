@@ -3,7 +3,6 @@ package com.example.book.Model;
 public class UserDto {
 	private String id;
 	private String username;
-
 	private String photoUrl; // Campo para la URL de la foto del usuario
 
 	// Constructor, getters y setters
@@ -11,6 +10,7 @@ public class UserDto {
 	public UserDto(String id, String username, String photoUrl) {
 		this.id = id;
 		this.username = username;
+		this.photoUrl = photoUrl;
 	}
 
 	public String getPhotoUrl() {

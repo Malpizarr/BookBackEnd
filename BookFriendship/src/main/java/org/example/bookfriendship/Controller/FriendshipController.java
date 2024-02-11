@@ -74,6 +74,18 @@ public class FriendshipController {
         }
     }
 
+	@DeleteMapping("/deletefriendship")
+	public ResponseEntity<?> deleteFriendship(@RequestParam String friendshipId) {
+		try {
+			friendshipService.deleteFriendship(friendshipId);
+			return ResponseEntity.ok("Amistad eliminada");
+		} catch (EntityNotFoundException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al eliminar la amistad: " + e.getMessage());
+		}
+	}
+
     @GetMapping("/areFriends/{userId1}/{userId2}")
     public ResponseEntity<Boolean> areFriends(@PathVariable String userId1, @PathVariable String userId2) {
         try {

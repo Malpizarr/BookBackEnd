@@ -68,8 +68,11 @@ wss.on('connection', function connection(ws, req) {
     ws.on('message', async function incoming(message) {
         const msg = JSON.parse(message);
 
-        // Maneja la solicitud de lista de amigos en línea
+        if (msg.type !== 'friendsListRequest') {
+            console.log('Mensaje recibido:', msg.type);
+        }
         if (msg.type === 'friendsListRequest') {
+
             const friendsList = await getFriendsList(userId, token);
             if (friendsList) {
                 const onlineFriends = friendsList.filter(friendId => connectedUsers.has(friendId));
@@ -85,6 +88,7 @@ wss.on('connection', function connection(ws, req) {
                 console.error('Error handling message:', error);
             }
 
+
             // Nueva condición para manejar solicitudes de chat
             if (msg.type === 'chatRequest') {
                 getChatMessages(userId, msg.friendId, (error, chatMessages) => {
@@ -95,6 +99,75 @@ wss.on('connection', function connection(ws, req) {
                     ws.send(JSON.stringify({type: 'chatMessages', messages: chatMessages}));
                 });
             }
+
+            if (msg.type === 'forcedUpdatelist') {
+                const friendWs = connectedUsers.get(msg.friendId);
+                if (friendWs && friendWs.readyState === WebSocket.OPEN) {
+                    const friendsList = await getFriendsListForced(msg.friendId, token);
+                    const onlineFriends = friendsList.filter(friendId => connectedUsers.has(friendId));
+                    friendWs.send(JSON.stringify({type: 'friendsList', friends: onlineFriends}));
+                }
+            }
+
+            if (msg.type === 'acceptedFriendRequest') {
+
+                // Mensaje para informar que la solicitud de amistad ha sido aceptada
+                const acceptanceMessage = JSON.stringify({
+                    type: 'friendshipAccepted',
+                    userId: userId, // ID del usuario que acepta la solicitud
+                    friendId: msg.friendId, // ID del amigo que envió la solicitud
+                });
+
+                // Envía el mensaje de aceptación al usuario que aceptó la solicitud
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(acceptanceMessage);
+                }
+
+                // Envía el mensaje de aceptación al usuario que envió la solicitud
+                const friendWs = connectedUsers.get(msg.friendId);
+                if (friendWs && friendWs.readyState === WebSocket.OPEN) {
+                    friendWs.send(acceptanceMessage);
+                }
+            }
+
+
+            if (msg.type === 'friendRequest') {
+                // Verifica si el WebSocket del usuario actual está abierto antes de enviar
+
+                console.log(ws.readyState === WebSocket.OPEN);
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({type: 'friendshipRequested', userId, friendId: msg.friendId}));
+                }
+
+                const friendWs = connectedUsers.get(msg.friendId);
+
+                if (friendWs && friendWs.readyState === WebSocket.OPEN) {
+                    friendWs.send(JSON.stringify({type: 'friendshipRequested', userId, friendId: msg.friendId}));
+                } else {
+                    console.log(`WebSocket para el amigo con ID ${msg.friendId} no está disponible o abierto.`);
+                }
+
+            }
+
+            if (msg.type === 'deletedFriend') {
+                const Message = JSON.stringify({
+                    type: 'friendshipDeleted',
+                    userId: userId, // ID del usuario que acepta la solicitud
+                    friendId: msg.friendId, // ID del amigo que envió la solicitud
+                });
+
+                // Envía el mensaje de aceptación al usuario que aceptó la solicitud
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(Message);
+                }
+
+                // Envía el mensaje de aceptación al usuario que envió la solicitud
+                const friendWs = connectedUsers.get(msg.friendId);
+                if (friendWs && friendWs.readyState === WebSocket.OPEN) {
+                    friendWs.send(Message);
+                }
+            }
+
 
             // Nueva funcionalidad para manejar la solicitud de lista de amigos en línea
             if (esSolicitudListaAmigos(message)) {
@@ -135,6 +208,20 @@ wss.on('connection', function connection(ws, req) {
         }
     }
 
+    async function getFriendsListForced(userId, token) {
+        try {
+            // Realiza la consulta HTTP
+            const response = await axios.get(`http://localhost:8081/api/friendships/friends`, {
+                headers: {'Authorization': `Bearer ${token}`}
+            });
+            friendsListCache[userId] = response.data.map(friendship => friendship.friendId);
+            return friendsListCache[userId];
+        } catch (error) {
+            console.error('Error retrieving friends list:', error);
+            return [];
+        }
+    }
+
     setInterval(() => {
         friendsListCache = {};
     }, 1000 * 60 * 60); // Limpia el caché cada hora, ajustar según necesidad
@@ -155,14 +242,6 @@ wss.on('connection', function connection(ws, req) {
     });
 });
 
-function esMensajeDeHandshake(message) {
-    try {
-        const msg = JSON.parse(message);
-        return msg.type && msg.type === 'handshake';
-    } catch (error) {
-        return false;
-    }
-}
 
 function validateJwt(token) {
     try {
@@ -175,27 +254,10 @@ function validateJwt(token) {
 
 function getUserIdFromJwt(token) {
     const decoded = jwt.decode(token);
-    console.log("Decoded JWT:", decoded);
     return decoded.sub;
 }
 
 
-async function areUsersFriends(userId1, userId2, token) {
-    try {
-        const response = await axios.get(`${API_FRIENDSHIP_URL}/${userId1}/${userId2}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Error verifying friendship:', error);
-        console.log('Error response:', error.response);
-        return false;
-    }
-}
-
-// Función para obtener mensajes de chat
 // Función para obtener mensajes de chat
 function getChatMessages(senderId, receiverId, callback) {
     const query = `
@@ -253,6 +315,9 @@ function sendMessage(senderId, receiverId, messageContent) {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const timestamp = hours + ':' + minutes + ' ' + ampm;
 
+    const timestampISO = new Date().toISOString();
+
+
     // Ajusta la hora a la zona horaria local de Costa Rica (UTC-6)
     const insertQuery = 'INSERT INTO messages (senderId, receiverId, message, timestamp, is_read) VALUES (?, ?, ?, ?, FALSE)';
     connection.query(insertQuery, [senderId, receiverId, messageContent, timestampMySQL], (insertError, insertResults) => {
@@ -271,7 +336,7 @@ function sendMessage(senderId, receiverId, messageContent) {
                     senderId: senderId,
                     content: messageContent,
                     id: insertResults.insertId,
-                    timestamp: timestamp, // Envía el timestamp formateado
+                    timestamp: timestampISO, // Envía el timestamp formateado
                     date: now.toDateString() // Envía la fecha
                 });
                 receiverWs.send(messageToSend);

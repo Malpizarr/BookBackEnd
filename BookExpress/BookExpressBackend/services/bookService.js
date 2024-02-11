@@ -1,9 +1,44 @@
 
 
-
 const mongoose = require('mongoose');
 const Book = require('../models/book');
 const Page = require('../models/page');
+const {redisClient} = require('../middleware/redisClient');
+
+
+// Servicio
+exports.getBookById = async (bookId) => {
+    if (!bookId) {
+        throw new Error('Book ID is required');
+    }
+
+    try {
+        // Intenta obtener el libro desde la caché de Redis
+        const cachedBook = await redisClient.get(`book:${bookId}`); // Usamos 'get' para recuperar el valor
+        if (cachedBook) {
+            console.log('Retrieving from cache');
+            return JSON.parse(cachedBook); // Devuelve el libro desde la caché
+        }
+
+        // Si el libro no está en la caché, lo busca en la base de datos
+        const book = await Book.findById(bookId);
+        if (!book) {
+            throw new Error('Book not found');
+        }
+
+        // Almacena el libro en la caché de Redis con un tiempo de expiración
+        await redisClient.setEx(`book:${bookId}`, 3600, JSON.stringify(book)); // Corrige los argumentos para 'setEx'
+        console.log('Saving to cache');
+
+        return book; // Devuelve el libro desde la base de datos
+    } catch (error) {
+        console.error(error);
+        throw new Error('An error occurred while getting the book');
+    }
+};
+
+
+
 
 
 exports.createBook = async (userId, bookData) => {
@@ -12,6 +47,7 @@ exports.createBook = async (userId, bookData) => {
     }
 
     try {
+        // Crea el nuevo libro
         const newBook = new Book({
             ...bookData,
             userId: userId,
@@ -19,7 +55,7 @@ exports.createBook = async (userId, bookData) => {
             status: "Public"
         });
 
-        // Crear la primera página
+        // Crea la primera página
         const firstPage = new Page({
             content: "Contenido inicial de la página",
             pageNumber: 1,
@@ -27,12 +63,17 @@ exports.createBook = async (userId, bookData) => {
             bookId: newBook._id
         });
 
-        // Agregar la primera página al libro
+        // Agrega la primera página al libro
         newBook.pages.push(firstPage);
 
-        // Guardar la primera página y el libro
+        // Guarda la primera página y el libro en la base de datos
         await firstPage.save();
         await newBook.save();
+
+        await redisClient.del(`userBooks:${userId}`);
+        await redisClient.setEx(`book:${newBook._id}`, 3600, JSON.stringify(newBook));
+        await redisClient.del(`friendBooks:${userId}`);
+
 
         return newBook;
     } catch (error) {
@@ -40,6 +81,7 @@ exports.createBook = async (userId, bookData) => {
         throw new Error('An error occurred while creating the book');
     }
 };
+
 
 exports.updatePage = async (bookId, pageNumber, pageDetails) => {
     try {
@@ -61,9 +103,23 @@ exports.updatePage = async (bookId, pageNumber, pageDetails) => {
             throw new Error('Página no encontrada');
         }
 
+        // Actualizar el contenido de la página específica
         book.pages[pageIndex].content = pageDetails.content;
 
+        // Guardar los cambios en el libro
         await book.save();
+
+        // Actualizar la caché de Redis para este libro
+        await redisClient.del(`book:${bookId}:pages`);
+
+        const pageNumUpdate = parseInt(pageNum, 10);
+        const cacheKey = `book:${bookId}:page:${pageNumUpdate}`;
+
+
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(book.pages[pageIndex].toObject()));
+        await redisClient.del(`book:${bookId}`);
+
+        console.log(`Page ${pageNum} updated in book: ${bookId} and cache refreshed`);
 
         return book.pages[pageIndex];
     } catch (error) {
@@ -71,6 +127,7 @@ exports.updatePage = async (bookId, pageNumber, pageDetails) => {
         throw error;
     }
 };
+
 
 exports.getBookByUserId = async (userId) => {
     try {
@@ -99,10 +156,17 @@ exports.getFriendIds = async (userId, authorizationHeader) => {
 
 exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
     try {
-        // Crear un conjunto de IDs únicos para evitar duplicados
         const uniqueFriendIds = new Set(friendIds);
 
         const booksPromises = Array.from(uniqueFriendIds).map(async friendId => {
+            const cacheKey = `friendBooks:${friendId}`;
+
+            const cachedBooks = await redisClient.get(cacheKey);
+            if (cachedBooks) {
+                console.log(`Retrieving books from cache for friend: ${friendId}`);
+                return JSON.parse(cachedBooks);
+            }
+
             const username = await getUsernameById(friendId, authorizationHeader);
             const response = await fetch(`http://localhost:8081/books/${friendId}/books`, {
                 headers: { 'Authorization': authorizationHeader }
@@ -111,10 +175,15 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
 
             if (!Array.isArray(books)) {
                 console.error(`Expected an array of books, got:`, books);
-                return []; // Devolver un arreglo vacío si la respuesta no es un arreglo
+                return [];
             }
 
-            return books.map(book => ({ ...book, username })); // Agregar el nombre de usuario a cada libro
+            const booksWithUsername = books.map(book => ({...book, username}));
+
+            // Almacena los libros en la caché de Redis con un tiempo de expiración
+            await redisClient.setEx(cacheKey, 3600, JSON.stringify(booksWithUsername));
+
+            return booksWithUsername;
         });
 
         const booksResults = await Promise.all(booksPromises);
@@ -124,6 +193,7 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
         throw error;
     }
 };
+
 
 
 const getUsernameById = async (userId, authorizationHeader) => {
@@ -150,13 +220,30 @@ exports.getUserBooks = async (userId) => {
     }
 
     try {
+        // Intenta obtener los libros del usuario desde la caché de Redis
+        const cachedBooks = await redisClient.get(`userBooks:${userId}`);
+        if (cachedBooks) {
+            console.log('Retrieving books from cache for user:', userId);
+            return JSON.parse(cachedBooks);  // Devuelve los libros desde la caché
+        }
+
+        // Si los libros no están en la caché, búscalos en la base de datos
         const books = await Book.find({ userId }).populate('pages');
-        return books;
+        if (!books || books.length === 0) {
+            return [];  // Devuelve un arreglo vacío si no hay libros
+        }
+
+        // Almacena los libros en la caché de Redis con un tiempo de expiración
+        await redisClient.setEx(`userBooks:${userId}`, 3600, JSON.stringify(books));
+        console.log('Saving books to cache for user:', userId);
+
+        return books;  // Devuelve los libros desde la base de datos
     } catch (error) {
         console.error(error);
         throw new Error('An error occurred while getting the user books');
     }
 };
+
 
 exports.getPageByNumber = async (bookId, pageNumber) => {
     if (!bookId || !pageNumber) {
@@ -164,24 +251,37 @@ exports.getPageByNumber = async (bookId, pageNumber) => {
     }
 
     const pageNum = parseInt(pageNumber, 10);
+    const cacheKey = `book:${bookId}:page:${pageNum}`;
 
     try {
-        const book = await Book.findById(bookId); // Simplemente busca el libro
+        // Intenta obtener la página desde la caché de Redis
+        const cachedPage = await redisClient.get(cacheKey);
+        if (cachedPage) {
+            console.log(`Retrieving page ${pageNum} from cache for book: ${bookId}`);
+            return JSON.parse(cachedPage);  // Devuelve la página desde la caché
+        }
+
+        const book = await Book.findById(bookId); // Busca el libro en la base de datos
         if (!book) throw new Error('Book not found');
 
-        // Encontrar la página específica por su número directamente en las páginas del libro
+        // Encuentra la página específica por su número directamente en las páginas del libro
         const page = book.pages.find(p => p.pageNumber === pageNum);
         if (!page) {
             console.log(`Page not found in book ${bookId} for page number ${pageNum}`);
             throw new Error('Page not found');
         }
 
-        return page;
+
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(page));
+        console.log(`Saving page ${pageNum} to cache for book: ${bookId}`);
+
+        return page;  // Devuelve la página desde la base de datos
     } catch (error) {
         console.error(error);
         throw new Error('An error occurred while getting the page');
     }
 };
+
 
 
 
@@ -195,19 +295,39 @@ exports.getBookByIdAndUserId = async (bookId, userId) => {
 };
 
 exports.getPagesByBook = async (bookId) => {
-    const book = await Book.findById(bookId);
-    if (!book) {
-        console.log(`Libro no encontrado con ID: ${bookId}`);
-        throw new Error('Book not found');
-    }
+    const cacheKey = `book:${bookId}:pages`;
 
-    if (book.pages.length === 0) {
-        console.log(`No hay páginas para el libro con ID: ${bookId}`);
-        // Maneja el caso de un libro sin páginas
-    }
+    try {
+        // Intenta obtener las páginas del libro desde la caché de Redis
+        const cachedPages = await redisClient.get(cacheKey);
+        if (cachedPages) {
+            console.log(`Retrieving pages from cache for book: ${bookId}`);
+            return JSON.parse(cachedPages);  // Devuelve las páginas desde la caché
+        }
 
-    return book.pages;
+        const book = await Book.findById(bookId).populate('pages');
+        if (!book) {
+            console.log(`Book not found with ID: ${bookId}`);
+            throw new Error('Book not found');
+        }
+
+        if (book.pages.length === 0) {
+            console.log(`No pages for the book with ID: ${bookId}`);
+            // Maneja el caso de un libro sin páginas
+            return [];
+        }
+
+        // Almacena las páginas en la caché de Redis con un tiempo de expiración
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(book.pages));
+        console.log(`Saving pages to cache for book: ${bookId}`);
+
+        return book.pages;  // Devuelve las páginas desde la base de datos
+    } catch (error) {
+        console.error(error);
+        throw new Error('An error occurred while getting the pages');
+    }
 };
+
 
 
 
@@ -229,7 +349,6 @@ exports.moveToNextPage = async (bookId) => {
 
     return nextPage;
 };
-
 exports.createPage = async (bookId, page) => {
     try {
         const book = await Book.findById(bookId);
@@ -247,6 +366,12 @@ exports.createPage = async (bookId, page) => {
         book.pages.push(newPage);
         await book.save();
 
+        const pageNum = parseInt(newPageNumber, 10);
+        const cacheKey = `book:${bookId}:page:${pageNum}`;
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(newPage));
+        await redisClient.setEx(`book:${bookId}`, 3600, JSON.stringify(book));
+        await redisClient.del(`book:${bookId}:pages`);
+
         return newPage;
     } catch (error) {
         console.error('Error al crear la página:', error);
@@ -255,20 +380,37 @@ exports.createPage = async (bookId, page) => {
 };
 
 
-exports.deleteBook = async (bookId) => {
-    const result = await Book.deleteOne({ _id: bookId });
-    if (result.deletedCount === 0) {
-        throw new Error('Book not found');
+exports.deleteBook = async (bookId, userId) => {
+    try {
+        const result = await Book.deleteOne({_id: bookId});
+        if (result.deletedCount === 0) {
+            throw new Error('Book not found');
+        }
+
+        // Después de eliminar el libro, invalida la caché relacionada para asegurar la coherencia de los datos
+        // En este caso, invalidamos la caché de este libro específico
+
+        await redisClient.del(`book:${bookId}`);
+
+        await redisClient.del(`userBooks:${userId}`); // Invalida la caché de los libros del usuario
+
+        await redisClient.del(`friendBooks:${userId}`);
+
+        console.log(`Book with ID ${bookId} deleted and cache invalidated`);
+
+
+        return {message: 'Book deleted successfully'};
+    } catch (error) {
+        console.error(error);
+        throw new Error('An error occurred while deleting the book');
     }
 };
-
 
 
 exports.deletePage = async (bookId, pageNumber) => {
     try {
         console.log(`Eliminando página. Libro: ${bookId}, Página: ${pageNumber}`);
 
-        // Convertir pageNumber a un número
         const pageNum = parseInt(pageNumber, 10);
         if (isNaN(pageNum)) {
             throw new Error('Número de página no válido');
@@ -284,9 +426,13 @@ exports.deletePage = async (bookId, pageNumber) => {
             throw new Error('Página no encontrada');
         }
 
-        // Eliminar la página del arreglo de páginas
+        // Eliminar la página del arreglo de páginas y guardar el libro
         book.pages.splice(pageIndex, 1);
         await book.save();
+
+        // Actualizar la caché de Redis para este libro
+        await redisClient.del(`book:${bookId}`);
+        await redisClient.del(`book:${bookId}:pages`);
 
         return book.pages;
     } catch (error) {
