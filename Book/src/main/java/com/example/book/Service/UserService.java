@@ -67,6 +67,7 @@ public class UserService implements UserDetailsService {
 
     public LoginResponse login(String username, String password) {
         User user = userRepository.findByUsername(username)
+		        .or(() -> userRepository.findByEmail(username))
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
@@ -90,6 +91,7 @@ public class UserService implements UserDetailsService {
 
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
+		        .or(() -> userRepository.findByEmail(username))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 
@@ -116,14 +118,6 @@ public class UserService implements UserDetailsService {
     }
 
 
-	public User searchUsers(String username) {
-
-		User user = userRepository.findByUsername(username)
-				.or(() -> userRepository.findByEmail(username))
-				.orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-		return user;
-	}
-
 	public List<User> searchUsersByUsername(String username, String currentUser) {
 		List<User> users = userRepository.findByUsernameContaining(username);
 		if (users.isEmpty()) {
@@ -134,9 +128,8 @@ public class UserService implements UserDetailsService {
 		Iterator<User> iterator = users.iterator();
 		while (iterator.hasNext()) {
 			User user = iterator.next();
-			// Comparar ignorando mayúsculas/minúsculas si es necesario
 			if (user.getUsername().equalsIgnoreCase(currentUser)) {
-				iterator.remove(); // Eliminar el usuario actual de la lista
+				iterator.remove();
 			}
 		}
 

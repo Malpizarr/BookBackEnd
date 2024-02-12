@@ -25,10 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -125,9 +122,29 @@ public class UserController {
 		try {
 			User updatedUser = userService.updateUser(userId, userDetails);
 
-			// Invalidar la caché de Redis para el usuario actualizado
+			// Invalida la caché del usuario específico
 			redisTemplate.delete("user:" + userId);
 			log.info("Cache invalidated for user with ID {}", userId);
+
+			// Recupera todas las claves de caché relacionadas con los amigos de este usuario
+			String userCacheKeysSet = "friendsOf:" + userId;
+			Set<Object> friendCacheKeys = redisTemplate.opsForSet().members(userCacheKeysSet);
+			if (friendCacheKeys != null && !friendCacheKeys.isEmpty()) {
+				// Convertir el conjunto de Object a un conjunto de String
+				Set<String> keysToDelete = friendCacheKeys.stream()
+						.map(Object::toString)
+						.collect(Collectors.toSet());
+
+				// Eliminar cada clave de caché de amigos individualmente
+				keysToDelete.forEach(key -> {
+					redisTemplate.delete("friendsDto:" + key);
+					log.info("Cache invalidated for friend with ID {}", key);
+				});
+			}
+
+			// Opcionalmente, limpia el conjunto 'friendsOf' para este usuario
+			redisTemplate.delete(userCacheKeysSet);
+			log.info("Cleared 'friendsOf' set for user with ID {}", userId);
 
 			return ResponseEntity.ok(updatedUser);
 		} catch (UserNotFoundException e) {
@@ -139,7 +156,8 @@ public class UserController {
 		}
 	}
 
-    @PostMapping("/uploadPhoto/{userId}")
+
+	@PostMapping("/uploadPhoto/{userId}")
     public ResponseEntity<?> uploadUserPhoto(@PathVariable String userId, @RequestParam("file") MultipartFile file) {
 	    log.info("Uploading photo for user with ID {}", userId);
         try {

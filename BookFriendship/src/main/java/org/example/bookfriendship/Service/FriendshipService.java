@@ -2,18 +2,25 @@
 
 package org.example.bookfriendship.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.bookfriendship.Controller.FriendshipController;
 import org.example.bookfriendship.Model.Friendship;
 import org.example.bookfriendship.Model.FriendshipDto;
 import org.example.bookfriendship.Repository.FriendshipRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 @Service
 public class FriendshipService {
@@ -23,6 +30,18 @@ public class FriendshipService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+	@Autowired
+	private final RedisTemplate<String, Object> redisTemplate; // Asegúrate de que es de este tipo
+
+	@Autowired
+	private ObjectMapper objectMapper;
+
+	private static final Logger log = LoggerFactory.getLogger(FriendshipController.class);
+
+	public FriendshipService(RedisTemplate<String, Object> redisTemplate) {
+		this.redisTemplate = redisTemplate;
+	}
 
     public Friendship createFriendship(String requesterId, String friendId) {
         boolean friendshipExists = friendshipRepository
@@ -43,12 +62,18 @@ public class FriendshipService {
         return friendshipRepository.save(friendship);
     }
 
-    public Friendship acceptFriendship(String friendshipId) {
+	public List<String> acceptFriendship(String friendshipId) {
+		List<String> userIds = new ArrayList<>();
         Friendship friendship = friendshipRepository.findById(friendshipId)
                 .orElseThrow(() -> new RuntimeException("No se encontró la amistad"));
 
         friendship.setStatus("accepted");
-        return friendshipRepository.save(friendship);
+		friendshipRepository.save(friendship);
+
+		userIds.add(friendship.getRequesterId());
+		userIds.add(friendship.getFriendId());
+
+		return userIds;
     }
 
     public List<FriendshipDto> getFriendshipDetailsWithUsernames(String userId) {
@@ -85,28 +110,55 @@ public class FriendshipService {
 
 
 
+
     public Map<String, String> fetchUsernames(Set<String> userIds) {
         Map<String, String> usernameMap = new HashMap<>();
+
         userIds.forEach(id -> {
-            try {
-	            ResponseEntity<Map> response = restTemplate.getForEntity("http://localhost:8081/users/" + id, Map.class);
-                if (response.getStatusCode().is2xxSuccessful() && response.hasBody()) {
-                    Map<String, Object> userDetails = response.getBody();
-                    String username = (String) userDetails.get("username");
-	                String photoUrl = (String) userDetails.get("PhotoUrl");
-                    if (username != null) {
-                        usernameMap.put(id, username);
-	                    if (photoUrl != null) {
-		                    usernameMap.put(id + "_photoUrl", photoUrl);
-	                    }
-                    }
-                }
-            } catch (Exception e) {
-	            e.printStackTrace();
-            }
+	        Map<String, String> userInfo = (Map<String, String>) redisTemplate.opsForValue().get("user:" + id);
+	        System.out.println(userInfo);
+
+	        if (userInfo != null && !userInfo.isEmpty()) {
+		        if (userInfo.containsKey("username")) {
+			        usernameMap.put(id, userInfo.get("username"));
+		        }
+		        if (userInfo.containsKey("PhotoUrl")) {
+			        usernameMap.put(id + "_photoUrl", userInfo.get("PhotoUrl"));
+		        }
+		        if (userInfo.containsKey("Email")) {
+			        usernameMap.put(id + "_email", userInfo.get("Email"));
+		        }
+
+
+	        } else {
+		        fetchAndCacheUserInfo(id, usernameMap);
+	        }
         });
-        return usernameMap;
+
+	    return usernameMap;
     }
+
+	private void fetchAndCacheUserInfo(String id, Map<String, String> usernameMap) {
+		ResponseEntity<Map> response = restTemplate.getForEntity("http://localhost:8081/users/" + id, Map.class);
+		if (response.getStatusCode().is2xxSuccessful() && response.hasBody()) {
+			Map<String, Object> userDetails = response.getBody();
+			Map<String, String> userInfoToCache = new HashMap<>();
+			userInfoToCache.put("username", (String) userDetails.get("username"));
+			userInfoToCache.put("PhotoUrl", (String) userDetails.get("PhotoUrl"));
+			userInfoToCache.put("Email", (String) userDetails.get("Email"));
+
+
+			usernameMap.put(id, userInfoToCache.get("username"));
+			usernameMap.put(id + "_photoUrl", userInfoToCache.get("PhotoUrl"));
+
+			redisTemplate.opsForValue().set("user:" + id, userInfoToCache, Duration.ofHours(1));
+		} else {
+			log.error("No se pudo obtener detalles del usuario del servicio externo para el ID {}: StatusCode {}", id, response.getStatusCode());
+		}
+	}
+
+
+
 
 
     public List<FriendshipDto> getPendingFriendshipDetailsWithUsernames(String userId) {
@@ -150,11 +202,14 @@ public class FriendshipService {
 				.anyMatch(f -> f.getStatus().equals("accepted"));
 	}
 
-	public void deleteFriendship(String friendshipId) {
+	public List<String> deleteFriendship(String friendshipId) {
 		Friendship friendship = friendshipRepository.findById(friendshipId)
 				.orElseThrow(() -> new RuntimeException("No se encontró la amistad"));
 
 		friendshipRepository.delete(friendship);
+
+		return Arrays.asList(friendship.getRequesterId(), friendship.getFriendId());
+
 	}
 }
 

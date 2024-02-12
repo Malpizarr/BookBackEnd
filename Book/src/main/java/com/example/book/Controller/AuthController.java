@@ -45,7 +45,6 @@ public class AuthController {
 
             String refreshToken = jwtTokenUtil.createRefreshToken(user);
 
-            // Crear cookie para el refreshToken
             Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
             refreshCookie.setHttpOnly(true);
             refreshCookie.setSecure(true);
@@ -126,6 +125,7 @@ public class AuthController {
             refreshCookie.setHttpOnly(true); // La cookie no es accesible desde JavaScript
             refreshCookie.setSecure(true);   // La cookie solo se envía con solicitudes HTTPS
             refreshCookie.setPath("/");      // La cookie está disponible para todas las rutas
+
 
             // Opcional: Configurar la expiración de la cookie para que coincida con la del token
             refreshCookie.setMaxAge(7 * 24 * 60 * 60); //7 días en segundos
