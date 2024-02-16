@@ -10,6 +10,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,6 +24,9 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
+
+    @Value("${production.url.frontredirect}")
+    private String productionUrl;
 
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
@@ -169,7 +173,7 @@ public class AuthController {
                 "SameSite=None");
 
         response.addHeader("Set-Cookie", cookieValue);
-        response.sendRedirect("https://bookfront-delta.vercel.app?token=" + token + "&username=" + username);
+        response.sendRedirect(productionUrl + "?token=" + token + "&username=" + username);
     }
 
 

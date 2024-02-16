@@ -194,8 +194,7 @@ wss.on('connection', function connection(ws, req) {
         }
 
         try {
-            // Realiza la consulta HTTP
-            const response = await axios.get(`https://bookfriendship.onrender.com/api/friendships/friends`, {
+            const response = await axios.get(process.env.PRODUCTION_URL_FRIENDS + `/api/friendships/friends`, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
 
@@ -211,7 +210,7 @@ wss.on('connection', function connection(ws, req) {
     async function getFriendsListForced(userId, token) {
         try {
             // Realiza la consulta HTTP
-            const response = await axios.get(`https://bookfriendship.onrender.com/api/friendships/friends`, {
+            const response = await axios.get(process.env.PRODUCTION_URL_FRIENDS + `/api/friendships/friends`, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
             friendsListCache[userId] = response.data.map(friendship => friendship.friendId);

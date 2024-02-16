@@ -10,6 +10,7 @@ import org.example.bookfriendship.Repository.FriendshipRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,9 @@ public class FriendshipService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+	@Value("${production.url.backredirect}")
+	private String productionUrl;
 
 	@Autowired
 	private final RedisTemplate<String, Object> redisTemplate; // Asegúrate de que es de este tipo
@@ -139,7 +143,7 @@ public class FriendshipService {
     }
 
 	private void fetchAndCacheUserInfo(String id, Map<String, String> usernameMap) {
-		ResponseEntity<Map> response = restTemplate.getForEntity("https://bookauth-c0fd8fb7a366.herokuapp.com/users/" + id, Map.class);
+		ResponseEntity<Map> response = restTemplate.getForEntity(productionUrl + "/users/" + id, Map.class);
 		if (response.getStatusCode().is2xxSuccessful() && response.hasBody()) {
 			Map<String, Object> userDetails = response.getBody();
 			Map<String, String> userInfoToCache = new HashMap<>();

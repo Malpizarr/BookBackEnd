@@ -142,7 +142,7 @@ exports.getBookByUserId = async (userId) => {
 
 exports.getFriendIds = async (userId, authorizationHeader) => {
     try {
-        const response = await fetch(`https://bookfriendship-de865bd88c8f.herokuapp.com/api/friendships/friends`, {
+        const response = await fetch(process.env.PRODUCTION_URL_FRIENDS, {
             headers: { 'Authorization': authorizationHeader }
         });
         const friendsData = await response.json();
@@ -191,7 +191,7 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
 
 const getUsernameById = async (userId, authorizationHeader) => {
     try {
-        const response = await fetch(`https://bookauth-c0fd8fb7a366.herokuapp.com/users/${userId}`, {
+        const response = await fetch(`${process.env.PRODUCTION_URL_USERS}/users/${userId}`, {
             headers: { 'Authorization': authorizationHeader }
         });
         const userData = await response.json();
@@ -380,7 +380,7 @@ exports.deleteBook = async (bookId, userId) => {
 
         await redisClient.del(`book:${bookId}`);
 
-        await redisClient.del(`userBooks:${userId}`); // Invalida la caché de los libros del usuario
+        await redisClient.del(`userBooks:${userId}`);
 
         await redisClient.del(`friendBooks:${userId}`);
 

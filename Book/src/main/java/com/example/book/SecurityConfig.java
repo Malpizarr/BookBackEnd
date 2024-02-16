@@ -6,6 +6,7 @@ import com.example.book.Util.JwtTokenUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
+
+	@Value("${production.url.backredirect}")
+	private String productionUrl;
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -65,7 +69,7 @@ public class SecurityConfig {
 							    String refreshToken = jwtTokenUtil.createRefreshToken(user);
 
 
-							    response.sendRedirect("https://bookauth-c0fd8fb7a366.herokuapp.com?token=" + token + "&refreshToken=" + refreshToken + "&username=" + user.getUsername());
+							    response.sendRedirect(productionUrl + "?token=" + token + "&refreshToken=" + refreshToken + "&username=" + user.getUsername());
 						    }
 					    }))
 			    .exceptionHandling(customizer ->

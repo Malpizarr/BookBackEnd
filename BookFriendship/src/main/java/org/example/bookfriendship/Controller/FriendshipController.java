@@ -12,6 +12,7 @@ import org.example.bookfriendship.util.JwtTokenUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +38,9 @@ public class FriendshipController {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Value("${production.url.backredirect}")
+    private String productionUrl;
 
     @Autowired
     private FriendshipService friendshipService;
@@ -99,7 +103,7 @@ public class FriendshipController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserDetails(@PathVariable String userId) {
         try {
-            ResponseEntity<Map> response = restTemplate.getForEntity("http://localhost:8081/users/" + userId, Map.class);
+            ResponseEntity<Map> response = restTemplate.getForEntity(productionUrl + "/users/" + userId, Map.class);
             Map<String, Object> userDetails = response.getBody();
             return ResponseEntity.ok(userDetails);
         } catch (Exception e) {
