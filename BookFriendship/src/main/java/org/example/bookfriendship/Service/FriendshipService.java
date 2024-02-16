@@ -139,7 +139,7 @@ public class FriendshipService {
     }
 
 	private void fetchAndCacheUserInfo(String id, Map<String, String> usernameMap) {
-		ResponseEntity<Map> response = restTemplate.getForEntity("http://localhost:8081/users/" + id, Map.class);
+		ResponseEntity<Map> response = restTemplate.getForEntity("https://bookauth-c0fd8fb7a366.herokuapp.com/users/" + id, Map.class);
 		if (response.getStatusCode().is2xxSuccessful() && response.hasBody()) {
 			Map<String, Object> userDetails = response.getBody();
 			Map<String, String> userInfoToCache = new HashMap<>();

@@ -22,7 +22,9 @@ connectRedis().then(() => {
 app.use(cookieParser());
 
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit: '2mb'}));
+app.use(bodyParser.urlencoded({limit: '2mb', extended: true}));
+
 
 
 app.use('/books', validateJWT, bookRoutes);
@@ -48,8 +50,7 @@ client.connect()
     .then(() => {
         console.log("Successfully connected to MongoDB!");
 
-        // Iniciar el servidor Express una vez que la conexión a la base de datos esté establecida
-        const PORT = process.env.PORT || 3001;
+        const PORT = process.env.PORT || 3000;
         app.listen(PORT, () => {
             console.log(`Servidor corriendo en el puerto ${PORT}.`);
         });

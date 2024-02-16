@@ -142,7 +142,7 @@ exports.getBookByUserId = async (userId) => {
 
 exports.getFriendIds = async (userId, authorizationHeader) => {
     try {
-        const response = await fetch(`http://localhost:8081/api/friendships/friends`, {
+        const response = await fetch(`https://bookfriendship-de865bd88c8f.herokuapp.com/api/friendships/friends`, {
             headers: { 'Authorization': authorizationHeader }
         });
         const friendsData = await response.json();
@@ -168,19 +168,12 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
             }
 
             const username = await getUsernameById(friendId, authorizationHeader);
-            const response = await fetch(`http://localhost:8081/books/${friendId}/books`, {
-                headers: { 'Authorization': authorizationHeader }
-            });
-            const books = await response.json();
 
-            if (!Array.isArray(books)) {
-                console.error(`Expected an array of books, got:`, books);
-                return [];
-            }
+            const books = await Book.find({userId: friendId, status: "Public"}).lean();
+            console.log(books)
 
             const booksWithUsername = books.map(book => ({...book, username}));
 
-            // Almacena los libros en la caché de Redis con un tiempo de expiración
             await redisClient.setEx(cacheKey, 3600, JSON.stringify(booksWithUsername));
 
             return booksWithUsername;
@@ -198,14 +191,14 @@ exports.getFriendsBooks = async (friendIds, authorizationHeader) => {
 
 const getUsernameById = async (userId, authorizationHeader) => {
     try {
-        const response = await fetch(`http://localhost:8081/users/${userId}`, {
+        const response = await fetch(`https://bookauth-c0fd8fb7a366.herokuapp.com/users/${userId}`, {
             headers: { 'Authorization': authorizationHeader }
         });
         const userData = await response.json();
         return userData.username;
     } catch (error) {
         console.error('Error al obtener el nombre de usuario:', error);
-        return ''; // Devolver un string vacío si hay un error
+        return '';
     }
 };
 
@@ -227,13 +220,11 @@ exports.getUserBooks = async (userId) => {
             return JSON.parse(cachedBooks);  // Devuelve los libros desde la caché
         }
 
-        // Si los libros no están en la caché, búscalos en la base de datos
         const books = await Book.find({ userId }).populate('pages');
         if (!books || books.length === 0) {
             return [];  // Devuelve un arreglo vacío si no hay libros
         }
 
-        // Almacena los libros en la caché de Redis con un tiempo de expiración
         await redisClient.setEx(`userBooks:${userId}`, 3600, JSON.stringify(books));
         console.log('Saving books to cache for user:', userId);
 
@@ -387,9 +378,6 @@ exports.deleteBook = async (bookId, userId) => {
             throw new Error('Book not found');
         }
 
-        // Después de eliminar el libro, invalida la caché relacionada para asegurar la coherencia de los datos
-        // En este caso, invalidamos la caché de este libro específico
-
         await redisClient.del(`book:${bookId}`);
 
         await redisClient.del(`userBooks:${userId}`); // Invalida la caché de los libros del usuario
@@ -426,11 +414,9 @@ exports.deletePage = async (bookId, pageNumber) => {
             throw new Error('Página no encontrada');
         }
 
-        // Eliminar la página del arreglo de páginas y guardar el libro
         book.pages.splice(pageIndex, 1);
         await book.save();
 
-        // Actualizar la caché de Redis para este libro
         await redisClient.del(`book:${bookId}`);
         await redisClient.del(`book:${bookId}:pages`);
 
@@ -442,12 +428,18 @@ exports.deletePage = async (bookId, pageNumber) => {
 };
 
 
-exports.updateBook = async (bookId, updates) => {
+exports.updateBook = async (bookId, updates, userId, auth) => {
     const book = await Book.findOne({ _id: bookId });
     if (!book) throw new Error('Book not found');
 
     Object.assign(book, updates);
     await book.save();
+
+    await redisClient.del(`book:${bookId}`);
+
+    await redisClient.del(`userBooks:${userId}`);
+
+    await redisClient.del(`friendBooks:${userId}`);
 
     return book;
 };

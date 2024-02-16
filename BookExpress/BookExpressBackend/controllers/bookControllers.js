@@ -134,8 +134,8 @@ exports.deletePage = async (req, res) => {
 
 exports.updateBook = async (req, res) => {
     try {
-        console.log("Updating book with ID:", req.params.bookId); // Verificar el valor de bookId
-        const updatedBook = await bookService.updateBook(req.params.bookId, req.body);
+        const authorizationHeader = req.headers.authorization;
+        const updatedBook = await bookService.updateBook(req.params.bookId, req.body, req.userId, authorizationHeader);
         res.status(200).send(updatedBook);
     } catch (error) {
         console.error("Error in updateBook:", error);
@@ -190,10 +190,8 @@ exports.getAllFriendsBooks = async (req, res) => {
         const userId = req.userId; // Obtenido del JWT
         const authorizationHeader = req.headers.authorization;
 
-        // Obtiene los IDs de los amigos
         const friendIds = await bookService.getFriendIds(userId, authorizationHeader);
 
-        // Obtiene los libros de cada amigo
         const allBooks = await bookService.getFriendsBooks(friendIds, authorizationHeader);
 
         res.status(200).send(allBooks);

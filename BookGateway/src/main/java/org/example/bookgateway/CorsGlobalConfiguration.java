@@ -2,10 +2,11 @@ package org.example.bookgateway;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
-import org.springframework.web.util.pattern.PathPatternParser;
-import org.springframework.web.cors.CorsConfiguration;
+
+import java.util.Arrays;
 
 @Configuration
 public class CorsGlobalConfiguration {
@@ -14,7 +15,12 @@ public class CorsGlobalConfiguration {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.addAllowedOrigin("http://localhost:3000"); // Origen permitido
+	    // Definir orígenes específicos en lugar de "*"
+	    config.setAllowedOrigins(Arrays.asList(
+			    "http://localhost:3000",
+			    "https://bookfront-r6l1.onrender.com",
+			    "https://bookfront-delta.vercel.app"
+	    ));
 
         config.addAllowedHeader("*"); // Permitir cualquier cabecera
 

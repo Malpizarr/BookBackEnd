@@ -158,56 +158,56 @@ public class UserController {
 
 
 	@PostMapping("/uploadPhoto/{userId}")
-    public ResponseEntity<?> uploadUserPhoto(@PathVariable String userId, @RequestParam("file") MultipartFile file) {
-	    log.info("Uploading photo for user with ID {}", userId);
-        try {
-            User user = userService.findUserById(userId);
-            if (user == null) {
-                return ResponseEntity.notFound().build();
-            }
+	public ResponseEntity<?> uploadUserPhoto(@PathVariable String userId, @RequestParam("file") MultipartFile file) {
+		log.info("Uploading photo for user with ID {}", userId);
+		try {
+			User user = userService.findUserById(userId);
+			if (user == null) {
+				return ResponseEntity.notFound().build();
+			}
 
-            // Obtener el nombre del archivo existente
-            String existingPhotoUrl = user.getPhotoUrl();
-            String existingFilename = null;
-            if (existingPhotoUrl != null && !existingPhotoUrl.isEmpty()) {
-                existingFilename = existingPhotoUrl.substring(existingPhotoUrl.lastIndexOf('/') + 1);
-            }
-	        DataLakeFileSystemClient fileSystemClient = dataLakeServiceClient.getFileSystemClient(fileSystemName);
-            if (existingFilename != null) {
-                fileSystemClient = dataLakeServiceClient.getFileSystemClient(fileSystemName);
-	            DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("book");
-                if (directoryClient.exists()) {
-                    DataLakeFileClient fileClientToDelete = directoryClient.getFileClient(existingFilename);
-                    if (fileClientToDelete.exists()) {
-                        fileClientToDelete.delete();
-                    }
-                }
-            }
+			String existingPhotoUrl = user.getPhotoUrl();
+			if (existingPhotoUrl != null && !existingPhotoUrl.isEmpty()) {
+				String existingFilename = existingPhotoUrl.substring(existingPhotoUrl.lastIndexOf('/') + 1);
 
-            // Subir la nueva imagen
-            String filename = userId + "_" + file.getOriginalFilename();
-	        assert fileSystemClient != null;
-	        DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("book");
-            DataLakeFileClient fileClient = directoryClient.createFile(filename);
+				// Verifica si el nombre del archivo existente es 'default.png'
+				if (!existingFilename.equals("default.png")) {
+					DataLakeFileSystemClient fileSystemClient = dataLakeServiceClient.getFileSystemClient(fileSystemName);
+					DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("book");
+					if (directoryClient.exists()) {
+						DataLakeFileClient fileClientToDelete = directoryClient.getFileClient(existingFilename);
+						if (fileClientToDelete.exists()) {
+							fileClientToDelete.delete();
+						}
+					}
+				}
+			}
 
-            try (InputStream inputStream = new BufferedInputStream(file.getInputStream())) {
-                fileClient.append(inputStream, 0, file.getSize());
-                fileClient.flush(file.getSize());
-            }
+			// Procede con la carga del nuevo archivo
+			String filename = userId + "_" + file.getOriginalFilename();
+			DataLakeFileSystemClient fileSystemClient = dataLakeServiceClient.getFileSystemClient(fileSystemName);
+			DataLakeDirectoryClient directoryClient = fileSystemClient.getDirectoryClient("book");
+			DataLakeFileClient fileClient = directoryClient.createFile(filename);
 
-	        String fileUrl = String.format("https://%s.blob.core.windows.net/%s/book/%s", accountName, fileSystemName, filename);
-            user.setPhotoUrl(fileUrl);
-            userService.updateUser(userId, user);
+			try (InputStream inputStream = new BufferedInputStream(file.getInputStream())) {
+				fileClient.append(inputStream, 0, file.getSize());
+				fileClient.flush(file.getSize());
+			}
 
-            Map<String, String> response = new HashMap<>();
-            response.put("photoUrl", fileUrl);
-            return ResponseEntity.ok(response);
-        } catch (IOException e) {
-	        log.error("Error uploading photo for user ID {}: {}", userId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al subir la imagen: " + e.getMessage());
-        }
-    }
+			String fileUrl = String.format("https://%s.blob.core.windows.net/%s/book/%s", accountName, fileSystemName, filename);
+			user.setPhotoUrl(fileUrl);
+			userService.updateUser(userId, user);
+
+			Map<String, String> response = new HashMap<>();
+			response.put("photoUrl", fileUrl);
+			return ResponseEntity.ok(response);
+		} catch (IOException e) {
+			log.error("Error uploading photo for user ID {}: {}", userId, e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Error al subir la imagen: " + e.getMessage());
+		}
+	}
+
 
 	@GetMapping("/search")
 	public ResponseEntity<List<UserDto>> searchUsers(@RequestParam String username) {

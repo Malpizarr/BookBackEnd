@@ -3,7 +3,6 @@ package com.example.book;
 import com.example.book.Model.User;
 import com.example.book.Service.CustomOAuth2UserService;
 import com.example.book.Util.JwtTokenUtil;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,54 +44,36 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable) // Deshabilitar CSRF
-                .authorizeRequests(auth -> auth
-		                .requestMatchers("/auth/**", "/error", "/oauth2/**", "/uploads/**").permitAll()
-		                .requestMatchers("/users/**").authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Agregar filtro JWT
-                .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-                        .successHandler(new AuthenticationSuccessHandler() {
-                            @Override
-                            public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
-                                OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-                                Map<String, Object> attributes = oAuth2User.getAttributes();
-                                String email = (String) attributes.get("email");
-                                String name = (String) (attributes.containsKey("name") ? attributes.get("name") : "");
+	    http
+			    .csrf(AbstractHttpConfigurer::disable) // Deshabilitar CSRF
+			    .authorizeRequests(auth -> auth
+					    .requestMatchers("/auth/**", "/error", "/oauth2/**", "/uploads/**").permitAll()
+					    .requestMatchers("/users/**").authenticated())
+			    .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Agregar filtro JWT
+			    .oauth2Login(oauth2 -> oauth2
+					    .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+					    .successHandler(new AuthenticationSuccessHandler() {
+						    @Override
+						    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+							    OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+							    Map<String, Object> attributes = oAuth2User.getAttributes();
+							    String email = (String) attributes.get("email");
+							    String name = (String) (attributes.containsKey("name") ? attributes.get("name") : "");
 
-                                User user = customOAuth2UserService.processUserDetails(email, name);
-	                            String token = jwtTokenUtil.createToken(user);
-	                            String refreshToken = jwtTokenUtil.createRefreshToken(user);
+							    User user = customOAuth2UserService.processUserDetails(email, name);
+							    String token = jwtTokenUtil.createToken(user);
+							    String refreshToken = jwtTokenUtil.createRefreshToken(user);
 
-	                            Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-	                            refreshCookie.setHttpOnly(true);
-	                            refreshCookie.setSecure(true);
-	                            refreshCookie.setPath("/");
-	                            refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
 
-	                            //Asignar la cookie al objeto HttpServletResponse
-	                            String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
-			                            refreshCookie.getName() + "=" + refreshToken,
-			                            "Max-Age=" + refreshCookie.getMaxAge(),
-			                            "Path=" + refreshCookie.getPath(),
-			                            "HttpOnly",
-			                            "Secure",
-			                            "SameSite=Strict"); // Puedes cambiar a "Strict" según tus necesidades
-
-	                            // Crear cookie para el refreshToken
-	                            response.addHeader("Set-Cookie", cookieValue);
-
-                                // Enviar token y username como parte de la URL
-                                response.sendRedirect("http://localhost:3000?token=" + token + "&username=" + user.getUsername());
-                            }
-                        }))
-                .exceptionHandling(customizer ->
-                        customizer.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))); // Usando Customizer
-        return http.build();
+							    response.sendRedirect("https://bookauth-c0fd8fb7a366.herokuapp.com?token=" + token + "&refreshToken=" + refreshToken + "&username=" + user.getUsername());
+						    }
+					    }))
+			    .exceptionHandling(customizer ->
+					    customizer.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
+	    return http.build();
     }
 
-    // En una clase de configuración en tu servicio de autenticación
+	// En una clase de configuración en tu servicio de autenticación
 //    @Bean
 //    public WebMvcConfigurer corsConfigurer() {
 //        return new WebMvcConfigurer() {

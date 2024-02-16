@@ -40,11 +40,9 @@ public class UserService implements UserDetailsService {
     }
 
     public User register(User newUser) {
-        // Busca el rol por defecto
         Role userRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
-        // Asigna los roles al nuevo usuario
         Set<Role> roles = new HashSet<>();
         roles.add(userRole);
         newUser.setRoles(roles);
@@ -61,6 +59,7 @@ public class UserService implements UserDetailsService {
         }
 
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
+	    newUser.setPhotoUrl("https://bookspringphotos.blob.core.windows.net/book/book/default.png");
         return userRepository.save(newUser);
     }
 

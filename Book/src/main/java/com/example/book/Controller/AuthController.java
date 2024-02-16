@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -58,7 +60,7 @@ public class AuthController {
                     "Path=" + refreshCookie.getPath(),
                     "HttpOnly",
                     "Secure",
-                    "SameSite=Strict"); // Puedes cambiar a "Strict" según tus necesidades
+                    "SameSite=None"); // Puedes cambiar a "Strict" según tus necesidades
 
             httpServletResponse.addHeader("Set-Cookie", cookieValue);
 
@@ -122,15 +124,22 @@ public class AuthController {
             String newAccessToken = jwtTokenUtil.createToken(user);
 
             Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-            refreshCookie.setHttpOnly(true); // La cookie no es accesible desde JavaScript
-            refreshCookie.setSecure(true);   // La cookie solo se envía con solicitudes HTTPS
-            refreshCookie.setPath("/");      // La cookie está disponible para todas las rutas
+            refreshCookie.setHttpOnly(true);
+            refreshCookie.setSecure(true);
+            refreshCookie.setPath("/");
+            refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
 
+            //Asignar la cookie al objeto HttpServletResponse
+            String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
+                    refreshCookie.getName() + "=" + refreshToken,
+                    "Max-Age=" + refreshCookie.getMaxAge(),
+                    "Path=" + refreshCookie.getPath(),
+                    "HttpOnly",
+                    "Secure",
+                    "SameSite=None"); // Puedes cambiar a "Strict" según tus necesidades
 
-            // Opcional: Configurar la expiración de la cookie para que coincida con la del token
-            refreshCookie.setMaxAge(7 * 24 * 60 * 60); //7 días en segundos
+            httpServletResponse.addHeader("Set-Cookie", cookieValue);
 
-            // Agregar la cookie al objeto HttpServletResponse
             httpServletResponse.addCookie(refreshCookie);
             return ResponseEntity.ok(new LoginResponse(newAccessToken));
         } catch (JwtException e) {
@@ -142,21 +151,44 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/set-cookie")
+    public void setCookie(HttpServletResponse response, @RequestParam String token, @RequestParam String refreshToken, @RequestParam String username) throws IOException {
+        Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(true);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
+
+        //Asignar la cookie al objeto HttpServletResponse
+        String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
+                refreshCookie.getName() + "=" + refreshToken,
+                "Max-Age=" + refreshCookie.getMaxAge(),
+                "Path=" + refreshCookie.getPath(),
+                "HttpOnly",
+                "Secure",
+                "SameSite=None");
+
+        response.addHeader("Set-Cookie", cookieValue);
+        response.sendRedirect("https://bookfront-delta.vercel.app?token=" + token + "&username=" + username);
+    }
+
+
+
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        // Crear una cookie con el mismo nombre que la cookie del refresh token
         Cookie cookie = new Cookie("refreshToken", null);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setPath("/");
-        cookie.setMaxAge(0); // Establecer la edad de la cookie a 0 para eliminarla
+        cookie.setMaxAge(0);
 
-        // Agregar la cookie al objeto HttpServletResponse
-        response.addCookie(cookie);
+        String cookieValue = String.format("%s=%s; Max-Age=%s; Path=%s; HttpOnly; Secure; SameSite=None",
+                cookie.getName(), cookie.getValue(), cookie.getMaxAge(), cookie.getPath());
+
+        response.addHeader("Set-Cookie", cookieValue);
 
         return ResponseEntity.ok("Logout successful");
     }
-
 
 
     private String extractJwtFromRequest(HttpServletRequest request) {

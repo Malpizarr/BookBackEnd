@@ -32,7 +32,7 @@ const ValidateTokenJWT = (req, res, next) => {
 };
 
 
-const wss = new WebSocket.Server({port: 8083});
+const wss = new WebSocket.Server({port: process.env.PORT || 8083});
 const connectedUsers = new Map();
 
 // Configuración de la conexión a la base de datos, esta utilizando .env
@@ -195,7 +195,7 @@ wss.on('connection', function connection(ws, req) {
 
         try {
             // Realiza la consulta HTTP
-            const response = await axios.get(`http://localhost:8081/api/friendships/friends`, {
+            const response = await axios.get(`https://bookfriendship.onrender.com/api/friendships/friends`, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
 
@@ -211,7 +211,7 @@ wss.on('connection', function connection(ws, req) {
     async function getFriendsListForced(userId, token) {
         try {
             // Realiza la consulta HTTP
-            const response = await axios.get(`http://localhost:8081/api/friendships/friends`, {
+            const response = await axios.get(`https://bookfriendship.onrender.com/api/friendships/friends`, {
                 headers: {'Authorization': `Bearer ${token}`}
             });
             friendsListCache[userId] = response.data.map(friendship => friendship.friendId);
