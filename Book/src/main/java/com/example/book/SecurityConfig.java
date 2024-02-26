@@ -78,7 +78,6 @@ public class SecurityConfig {
 	    return http.build();
     }
 
-	// En una clase de configuración en tu servicio de autenticación
 //    @Bean
 //    public WebMvcConfigurer corsConfigurer() {
 //        return new WebMvcConfigurer() {
