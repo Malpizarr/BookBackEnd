@@ -24,5 +24,5 @@ public class CustomUserDetails extends User {
 		return username;
 	}
 
-    // otros métodos necesarios...
+
 }

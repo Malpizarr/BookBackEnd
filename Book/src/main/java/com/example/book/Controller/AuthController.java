@@ -43,9 +43,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse httpServletResponse) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest,
+                                   HttpServletResponse httpServletResponse) {
         try {
-            LoginResponse response = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
+            LoginResponse response = userService.login(loginRequest.getUsername(),
+                    loginRequest.getPassword());
 
             User user = userService.findByUsername(loginRequest.getUsername());
 
@@ -64,7 +66,7 @@ public class AuthController {
                     "Path=" + refreshCookie.getPath(),
                     "HttpOnly",
                     "Secure",
-                    "SameSite=None"); // Puedes cambiar a "Strict" según tus necesidades
+                    "SameSite=Strict"); // Puedes cambiar a "Strict" según tus necesidades
 
             httpServletResponse.addHeader("Set-Cookie", cookieValue);
 
@@ -96,7 +98,8 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse httpServletResponse) {
+    public ResponseEntity<?> refreshToken(HttpServletRequest request,
+                                          HttpServletResponse httpServletResponse) {
         String refreshToken = null;
 
         // Extraer el refresh token de las cookies
@@ -133,37 +136,39 @@ public class AuthController {
             refreshCookie.setPath("/");
             refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
 
-            //Asignar la cookie al objeto HttpServletResponse
+            // Modificar la configuración de SameSite a Strict
             String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
                     refreshCookie.getName() + "=" + refreshToken,
                     "Max-Age=" + refreshCookie.getMaxAge(),
                     "Path=" + refreshCookie.getPath(),
                     "HttpOnly",
                     "Secure",
-                    "SameSite=None"); // Puedes cambiar a "Strict" según tus necesidades
+                    "SameSite=Strict");
 
             httpServletResponse.addHeader("Set-Cookie", cookieValue);
-
-            httpServletResponse.addCookie(refreshCookie);
             return ResponseEntity.ok(new LoginResponse(newAccessToken));
         } catch (JwtException e) {
             // Manejar específicamente las excepciones relacionadas con JWT
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Error en el token JWT: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Error en el token JWT: " +
+                    e.getMessage());
         } catch (Exception e) {
             // Manejar otras excepciones no específicas
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del " +
+                    "servidor");
         }
     }
 
     @GetMapping("/set-cookie")
-    public void setCookie(HttpServletResponse response, @RequestParam String token, @RequestParam String refreshToken, @RequestParam String username) throws IOException {
+    public void setCookie(HttpServletResponse response, @RequestParam String token,
+                          @RequestParam String refreshToken, @RequestParam String username)
+            throws IOException {
         Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
         refreshCookie.setHttpOnly(true);
         refreshCookie.setSecure(true);
         refreshCookie.setPath("/");
         refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 días
 
-        //Asignar la cookie al objeto HttpServletResponse
+        // Modificar la configuración de SameSite a Strict
         String cookieValue = String.format("%s; %s; %s; %s; %s; %s",
                 refreshCookie.getName() + "=" + refreshToken,
                 "Max-Age=" + refreshCookie.getMaxAge(),
@@ -178,6 +183,7 @@ public class AuthController {
 
 
 
+
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
         Cookie cookie = new Cookie("refreshToken", null);
@@ -186,7 +192,8 @@ public class AuthController {
         cookie.setPath("/");
         cookie.setMaxAge(0);
 
-        String cookieValue = String.format("%s=%s; Max-Age=%s; Path=%s; HttpOnly; Secure; SameSite=None",
+        String cookieValue = String.format("%s=%s; Max-Age=%s; Path=%s; HttpOnly; Secure; " +
+                        "SameSite=Strict",
                 cookie.getName(), cookie.getValue(), cookie.getMaxAge(), cookie.getPath());
 
         response.addHeader("Set-Cookie", cookieValue);

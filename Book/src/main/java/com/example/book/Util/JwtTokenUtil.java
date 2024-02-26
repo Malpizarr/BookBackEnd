@@ -57,7 +57,7 @@ public class JwtTokenUtil {
                 .parseClaimsJws(token)
                 .getBody();
 
-        return claims.get("username", String.class); // Asume que el claim se llama "username"
+        return claims.get("username", String.class);
     }
 
     public Date getCreationDateFromToken(String token) {
@@ -75,7 +75,6 @@ public class JwtTokenUtil {
             final String userIdFromToken = getUserIdFromToken(token);
             String userIdFromUserDetails = ((CustomUserDetails) userDetails).getUserId();
 
-            // Comprueba si el ID del usuario del token coincide con el ID del usuario de UserDetails y si el token no ha expirado
             return (userIdFromToken.equals(userIdFromUserDetails) && !isTokenExpired(token));
         } catch (Exception e) {
             return false;

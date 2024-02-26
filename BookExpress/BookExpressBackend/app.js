@@ -13,7 +13,6 @@ const {redisClient, getAsync, setAsync, connectRedis} = require('./middleware/re
 
 connectRedis().then(() => {
     console.log("Connected to Redis");
-    // Tu lógica de aplicación que depende de Redis va aquí
 }).catch((err) => {
     console.error("Error connecting to Redis:", err);
 });

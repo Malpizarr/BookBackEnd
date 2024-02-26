@@ -69,7 +69,8 @@ public class SecurityConfig {
 							    String refreshToken = jwtTokenUtil.createRefreshToken(user);
 
 
-							    response.sendRedirect(productionUrl + "?token=" + token + "&refreshToken=" + refreshToken + "&username=" + user.getUsername());
+							    response.sendRedirect(productionUrl + "/auth/set-cookie?token=" + token + "&refreshToken=" + refreshToken + "&username=" + user.getUsername());
+
 						    }
 					    }))
 			    .exceptionHandling(customizer ->

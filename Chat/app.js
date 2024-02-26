@@ -35,23 +35,19 @@ const ValidateTokenJWT = (req, res, next) => {
 const wss = new WebSocket.Server({port: process.env.PORT || 8083});
 const connectedUsers = new Map();
 
-// Configuración de la conexión a la base de datos, esta utilizando .env
-const connection = mysql.createConnection({
+const pool = mysql.createPool({
+    connectionLimit: 10, // El número de conexiones permitidas en el pool (ajústalo a tus necesidades)
     host: process.env.DATABASE_URI,
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
     ssl: {
-        rejectUnauthorized: false // Permite certificados no autorizados
+        rejectUnauthorized: false
     }
 });
 
 
 // Conectar a la base de datos
-connection.connect(error => {
-    if (error) throw error;
-    console.log('Conectado exitosamente a la base de datos.');
-});
 
 
 wss.on('connection', function connection(ws, req) {
@@ -267,7 +263,7 @@ function getChatMessages(senderId, receiverId, callback) {
            OR (senderId = ?
           AND receiverId = ?)`
 
-    connection.query(query, [senderId, receiverId, receiverId, senderId], (error, results) => {
+    pool.query(query, [senderId, receiverId, receiverId, senderId], (error, results) => {
         if (error) {
             return callback(error, null);
         }
@@ -319,7 +315,7 @@ function sendMessage(senderId, receiverId, messageContent) {
 
     // Ajusta la hora a la zona horaria local de Costa Rica (UTC-6)
     const insertQuery = 'INSERT INTO messages (senderId, receiverId, message, timestamp, is_read) VALUES (?, ?, ?, ?, FALSE)';
-    connection.query(insertQuery, [senderId, receiverId, messageContent, timestampMySQL], (insertError, insertResults) => {
+    pool.query(insertQuery, [senderId, receiverId, messageContent, timestampMySQL], (insertError, insertResults) => {
         if (insertError) {
             console.error('Error al guardar el mensaje:', insertError);
             return;
