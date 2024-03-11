@@ -10,33 +10,11 @@ const {json} = require("express");
 const app = express();
 
 app.use(json());
-
-const ValidateTokenJWT = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({message: 'No token provided'});
-    }
-
-    const token = authHeader.split(' ')[1]; // Asume que el token está después del 'Bearer'
-    if (!token) {
-        return res.status(401).json({message: 'Token not found'});
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET, {algorithms: ['HS256']});
-        req.userId = decoded.sub || decoded.userId;
-        next();
-    } catch (error) {
-        res.status(401).json({message: 'Invalid token', error: error.message});
-    }
-};
-
-
 const wss = new WebSocket.Server({port: process.env.PORT || 8083});
 const connectedUsers = new Map();
 
 const pool = mysql.createPool({
-    connectionLimit: 10, // El número de conexiones permitidas en el pool (ajústalo a tus necesidades)
+    connectionLimit: 10,
     host: process.env.DATABASE_URI,
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
@@ -45,9 +23,6 @@ const pool = mysql.createPool({
         rejectUnauthorized: false
     }
 });
-
-
-// Conectar a la base de datos
 
 
 wss.on('connection', function connection(ws, req) {
