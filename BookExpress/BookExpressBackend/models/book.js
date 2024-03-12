@@ -7,7 +7,8 @@ const BookSchema = new mongoose.Schema({
     description: String,
     userId: String,
     pages: [PageSchema],
-    status: String
+    status: String,
+    allowedUsers: [String]
 
 });
 
