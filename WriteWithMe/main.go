@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -67,19 +66,12 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 func handleMessages() {
 	for {
 		msg := <-broadcast
-
-		if msg.Content == "" {
-			continue
-		}
-
 		clients, ok := bookClients[msg.BookID]
 		if !ok {
 			continue
 		}
-
 		for client := range clients {
-			err := client.WriteJSON(msg)
-			fmt.Println("Mensaje enviado" + msg.Content)
+			err := client.WriteJSON(msg) // Envía el mensaje tal como está
 			if err != nil {
 				log.Printf("error: %v", err)
 				client.Close()

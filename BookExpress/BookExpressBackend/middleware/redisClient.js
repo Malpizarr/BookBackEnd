@@ -10,7 +10,6 @@ const redisClient = redis.createClient({
     }
 });
 
-// Escucha errores en la conexión de Redis
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 
