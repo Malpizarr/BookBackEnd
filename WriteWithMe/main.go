@@ -70,8 +70,12 @@ func handleMessages() {
 		if !ok {
 			continue
 		}
+
+		if msg.Content == "" {
+			continue
+		}
 		for client := range clients {
-			err := client.WriteJSON(msg) // Envía el mensaje tal como está
+			err := client.WriteJSON(msg)
 			if err != nil {
 				log.Printf("error: %v", err)
 				client.Close()
