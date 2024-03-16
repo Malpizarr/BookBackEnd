@@ -8,180 +8,92 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//--TODO: Arreglar la comunicacion en tiempo real
-
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
 }
 
-type CRDTOperation struct {
-	Action      string `json:"action"`      // "add" o "delete"
-	Char        string `json:"char"`        // Cambiado de rune a string
-	Position    int    `json:"position"`    // Posición en el documento
-	ClientID    string `json:"clientId"`    // ID único para cada cliente
-	OperationID string `json:"operationId"` // ID único para cada operación
+type Op struct {
+	Action     string            `json:"action"`
+	Content    string            `json:"content"`
+	Position   int               `json:"position"`
+	Attributes map[string]string `json:"attributes"`
 }
 
+// Message ahora incluye un slice de Ops para permitir múltiples operaciones.
 type Message struct {
-	BookID  string        `json:"bookId"`
-	Type    string        `json:"type"`              // "connect", "operation", "initial"
-	Op      CRDTOperation `json:"op,omitempty"`      // omitempty para que no se incluya si está vacío
-	Content string        `json:"content,omitempty"` // Para el estado inicial y otros mensajes que no sean operaciones
+	BookID string `json:"bookId"`
+	Type   string `json:"type"` // 'operation', 'connect', etc.
+	Ops    []Op   `json:"ops"`  // Lista de operaciones.
 }
 
 type BookState struct {
-	Document     []CRDTOperation
-	Clients      map[*Connection]bool
-	Lock         *sync.RWMutex // Usa un puntero aquí
-	OperationLog []CRDTOperation
+	Clients map[*websocket.Conn]bool
+	Lock    sync.Mutex
 }
 
-var bookClients = make(map[string]*BookState) // Mapa de ID de libro a estado del libro
-
-type Connection struct {
-	*websocket.Conn
-	send chan Message
-}
+var books = make(map[string]*BookState)
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("Upgrade Error: %v\n", err)
-		return
+		log.Fatal(err)
 	}
 	defer ws.Close()
 
-	conn := &Connection{Conn: ws, send: make(chan Message, 256)}
-	defer close(conn.send)
-
-	var clientBookID string
 	for {
 		var msg Message
 		err := ws.ReadJSON(&msg)
 		if err != nil {
-			log.Printf("ReadJSON Error: %v\n", err)
+			log.Printf("error: %v", err)
+			deleteClient(ws, msg.BookID)
 			break
 		}
 
-		switch msg.Type {
-		case "connect":
-			clientBookID = msg.BookID
-			handleClientConnect(conn, clientBookID)
-		case "operation":
-			handleCRDTOperation(clientBookID, msg.Op)
-		}
+		processMessage(ws, msg)
 	}
 }
 
-func handleClientConnect(conn *Connection, bookID string) {
-	ensureBookState(bookID)
-	bookClients[bookID].Clients[conn] = true
-	broadcastInitialState(bookID, conn)
-}
-
-func ensureBookState(bookID string) {
-	if _, ok := bookClients[bookID]; !ok {
-		bookClients[bookID] = &BookState{
-			Document:     []CRDTOperation{},
-			Clients:      make(map[*Connection]bool),
-			Lock:         &sync.RWMutex{},
-			OperationLog: []CRDTOperation{},
-		}
-	}
-}
-
-func handleCRDTOperation(bookID string, op CRDTOperation) {
-	state := bookClients[bookID]
-	state.Lock.Lock()
-	defer state.Lock.Unlock()
-
-	switch op.Action {
-	case "add":
-		position := op.Position
-		if position > len(state.Document) {
-			position = len(state.Document)
-		}
-		newOp := CRDTOperation{
-			Action:      "add",
-			Char:        op.Char,
-			Position:    position,
-			ClientID:    op.ClientID,
-			OperationID: op.OperationID,
-		}
-		state.Document = append(state.Document[:position], append([]CRDTOperation{newOp}, state.Document[position:]...)...)
-
-	case "remove":
-		if op.Position >= 0 && op.Position < len(state.Document) {
-			state.Document = append(state.Document[:op.Position], state.Document[op.Position+1:]...)
-		}
+func processMessage(ws *websocket.Conn, msg Message) {
+	bookID := msg.BookID
+	if _, ok := books[bookID]; !ok {
+		books[bookID] = &BookState{Clients: make(map[*websocket.Conn]bool)}
 	}
 
-	state.OperationLog = append(state.OperationLog, op)
-	broadcastToBook(bookID, Message{
-		Type: "operation",
-		Op:   op,
-	})
-}
+	bookState := books[bookID]
+	bookState.Lock.Lock()
+	defer bookState.Lock.Unlock()
 
-func broadcastInitialState(bookID string, conn *Connection) {
-	state := bookClients[bookID]
-	state.Lock.RLock()
-	defer state.Lock.RUnlock()
+	if _, ok := bookState.Clients[ws]; !ok {
+		bookState.Clients[ws] = true
+	}
 
-	var documentContent []rune
-	for _, op := range state.OperationLog {
-		if op.Action == "add" {
-			position := op.Position
-			if position > len(documentContent) {
-				position = len(documentContent)
+	for client := range bookState.Clients {
+		if client != ws {
+			err := client.WriteJSON(msg)
+			if err != nil {
+				log.Printf("error: %v", err)
+				client.Close()
+				delete(bookState.Clients, client)
 			}
-			for _, char := range op.Char {
-				documentContent = append(documentContent[:position], append([]rune{char}, documentContent[position:]...)...)
-				position++ // Incrementamos la posición para el siguiente carácter
-			}
-
 		}
-		//--TODO: handle remove action
-	}
-
-	// Convertir el documento a string y enviarlo al cliente.
-	initialContent := string(documentContent)
-	select {
-	case conn.send <- Message{Type: "initial", Content: initialContent}:
-
-	default:
-		close(conn.send)
-		delete(state.Clients, conn)
 	}
 }
 
-// broadcastToBook difunde una operación CRDT a todos los clientes conectados al libro.
-func broadcastToBook(bookID string, msg Message) {
-	state := bookClients[bookID]
-	state.Lock.RLock()
-	defer state.Lock.RUnlock()
-
-	for client := range state.Clients {
-		select {
-		case client.send <- msg:
-		default:
-			close(client.send)
-			delete(state.Clients, client)
-		}
+func deleteClient(ws *websocket.Conn, bookID string) {
+	if bookState, ok := books[bookID]; ok {
+		bookState.Lock.Lock()
+		defer bookState.Lock.Unlock()
+		delete(bookState.Clients, ws)
 	}
 }
 
 func main() {
-	fs := http.FileServer(http.Dir("public")) // Sirve archivos estáticos desde el directorio "public".
-	http.Handle("/", fs)
-
-	http.HandleFunc("/ws", handleConnections) // Maneja las conexiones WebSocket en la ruta "/ws".
-
-	log.Println("Server started on :8000")
-	err := http.ListenAndServe(":8000", nil) // Inicia el servidor en el puerto 8000.
+	http.HandleFunc("/ws", handleConnections)
+	log.Println("Server started")
+	err := http.ListenAndServe(":8000", nil)
 	if err != nil {
-		log.Fatal("ListenAndServe Error: ", err)
+		log.Fatal("ListenAndServe error:", err)
 	}
 }
