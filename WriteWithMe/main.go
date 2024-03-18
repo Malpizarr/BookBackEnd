@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -20,12 +21,14 @@ type Op struct {
 	Position   int                    `json:"position"`
 	Length     int                    `json:"length"`
 	Attributes map[string]interface{} `json:"attributes"`
+	PageNumber int                    `json:"pageNumber"`
 }
 
 type Message struct {
-	BookID string `json:"bookId"`
-	Type   string `json:"type"` // 'operation', 'connect', etc.
-	Ops    []Op   `json:"ops"`  // Lista de operaciones.
+	BookID     string `json:"bookId"`
+	Type       string `json:"type"`
+	Ops        []Op   `json:"ops"`
+	PageNumber int    `json:"pageNumber"`
 }
 
 type Operation struct {
@@ -34,13 +37,14 @@ type Operation struct {
 	Position   int
 	Length     int
 	Attributes map[string]string
+	PageNumber int
 }
 
 type BookState struct {
 	BookID     string
 	Clients    map[*websocket.Conn]bool
-	Operations []Operation
-	Content    string
+	Operations map[int][]Operation
+	Pages      map[int]string
 	Lock       sync.Mutex
 }
 
@@ -67,11 +71,14 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 func processMessage(ws *websocket.Conn, msg Message) {
 	bookID := msg.BookID
+	currentPage := msg.PageNumber
 	bookState, ok := books[bookID]
 	if !ok {
 		bookState = &BookState{
-			BookID:  bookID,
-			Clients: make(map[*websocket.Conn]bool),
+			BookID:     bookID,
+			Clients:    make(map[*websocket.Conn]bool),
+			Operations: make(map[int][]Operation),
+			Pages:      make(map[int]string),
 		}
 		books[bookID] = bookState
 	}
@@ -82,13 +89,16 @@ func processMessage(ws *websocket.Conn, msg Message) {
 	bookState.Clients[ws] = true
 
 	for _, op := range msg.Ops {
-		adjustedOp := adjustOperation(op, bookState.Operations)
-		applyOperation(bookState, ws, adjustedOp)
+		adjustedOp := adjustOperation(op, bookState.Operations[currentPage], currentPage)
+		applyOperation(bookState, ws, adjustedOp, currentPage)
 	}
 }
-
-func adjustOperation(currentOp Op, prevOperations []Operation) Op {
+func adjustOperation(currentOp Op, prevOperations []Operation, currentPage int) Op {
 	for _, prevOp := range prevOperations {
+		if prevOp.PageNumber != currentPage {
+			continue
+		}
+
 		switch {
 		case prevOp.Action == "insert" && currentOp.Action == "insert":
 			if prevOp.Position <= currentOp.Position {
@@ -111,32 +121,39 @@ func adjustOperation(currentOp Op, prevOperations []Operation) Op {
 	return currentOp
 }
 
-func applyOperation(bookState *BookState, ws *websocket.Conn, op Op) {
-	bookContent := bookState.Content
+func applyOperation(bookState *BookState, ws *websocket.Conn, op Op, currentPage int) {
+
+	pageContent := bookState.Pages[op.PageNumber]
 
 	switch op.Action {
 	case "insert":
-		if op.Position >= len(bookContent) {
-			bookContent += op.Content
+		if op.Position >= len(pageContent) {
+			pageContent += op.Content
 		} else {
-			bookContent = bookContent[:op.Position] + op.Content + bookContent[op.Position:]
+			pageContent = pageContent[:op.Position] + op.Content + pageContent[op.Position:]
 		}
 	case "delete":
-		if op.Position < len(bookContent) {
-			end := min(op.Position+op.Length, len(bookContent))
-			bookContent = bookContent[:op.Position] + bookContent[end:]
+		if op.Position < len(pageContent) {
+			end := min(op.Position+op.Length, len(pageContent))
+			pageContent = pageContent[:op.Position] + pageContent[end:]
 		}
 	}
 
-	bookState.Content = bookContent
-	broadcastOperation(bookState, ws, op)
+	bookState.Pages[op.PageNumber] = pageContent
+	broadcastOperation(bookState, ws, op, currentPage)
 }
 
-func broadcastOperation(bookState *BookState, ws *websocket.Conn, op Op) {
+func broadcastOperation(bookState *BookState, ws *websocket.Conn, op Op, currentPage int) {
+	if op.PageNumber != currentPage {
+		fmt.Println("Ignoring operation on different page")
+		return
+	}
+
 	msg := Message{
-		BookID: bookState.BookID,
-		Type:   "operation",
-		Ops:    []Op{op},
+		BookID:     bookState.BookID,
+		PageNumber: currentPage,
+		Type:       "operation",
+		Ops:        []Op{op},
 	}
 	for client := range bookState.Clients {
 		if client != ws {
