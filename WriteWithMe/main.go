@@ -64,6 +64,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		processMessage(ws, msg)
 	}
 }
+
 func processMessage(ws *websocket.Conn, msg Message) {
 	bookID := msg.BookID
 	bookState, ok := books[bookID]
@@ -86,58 +87,52 @@ func processMessage(ws *websocket.Conn, msg Message) {
 	}
 }
 
-func adjustOperation(op Op, prevOperations []Operation) Op {
-	adjustedPosition := op.Position
+func adjustOperation(currentOp Op, prevOperations []Operation) Op {
 	for _, prevOp := range prevOperations {
-		switch prevOp.Action {
-		case "insert":
-			if op.Position > prevOp.Position {
-				adjustedPosition += len(prevOp.Content)
+		switch {
+		case prevOp.Action == "insert" && currentOp.Action == "insert":
+			if prevOp.Position <= currentOp.Position {
+				currentOp.Position += len(prevOp.Content)
 			}
-		case "delete":
-			if op.Position >= prevOp.Position {
-				if op.Position < prevOp.Position+prevOp.Length {
-					adjustedPosition = prevOp.Position // Si la posición cae dentro de una operación de borrado previa, ajustar a inicio del borrado
-				} else {
-					adjustedPosition -= min(op.Position-prevOp.Position, prevOp.Length)
-				}
+		case prevOp.Action == "delete" && currentOp.Action == "insert":
+			if prevOp.Position < currentOp.Position {
+				currentOp.Position -= min(prevOp.Length, currentOp.Position-prevOp.Position)
+			}
+		case prevOp.Action == "insert" && currentOp.Action == "delete":
+			if prevOp.Position <= currentOp.Position {
+				currentOp.Position += len(prevOp.Content)
+			}
+		case prevOp.Action == "delete" && currentOp.Action == "delete":
+			if prevOp.Position < currentOp.Position {
+				currentOp.Position -= min(prevOp.Length, currentOp.Position-prevOp.Position)
 			}
 		}
 	}
-	return Op{
-		Action:     op.Action,
-		Content:    op.Content,
-		Position:   adjustedPosition,
-		Length:     op.Length,
-		Attributes: op.Attributes,
-	}
+	return currentOp
 }
 
-// Todo: Implementar la mejora de eliminacion en la posicion correcta, ademas arregla el formato de la edicion
 func applyOperation(bookState *BookState, ws *websocket.Conn, op Op) {
 	bookContent := bookState.Content
 
 	switch op.Action {
 	case "insert":
-		insertPosition := max(0, op.Position)
-		if insertPosition > len(bookContent) {
-			insertPosition = len(bookContent)
+		if op.Position >= len(bookContent) {
+			bookContent += op.Content
+		} else {
+			bookContent = bookContent[:op.Position] + op.Content + bookContent[op.Position:]
 		}
-		bookContent = bookContent[:insertPosition] + op.Content + bookContent[insertPosition:]
 	case "delete":
-		if op.Position < 0 || op.Position >= len(bookContent) {
-			return
+		if op.Position < len(bookContent) {
+			end := min(op.Position+op.Length, len(bookContent))
+			bookContent = bookContent[:op.Position] + bookContent[end:]
 		}
-		endPos := min(op.Position+op.Length, len(bookContent))
-		if op.Position < endPos {
-			bookContent = bookContent[:op.Position] + bookContent[endPos:]
-		}
-	case "format":
-
 	}
 
 	bookState.Content = bookContent
+	broadcastOperation(bookState, ws, op)
+}
 
+func broadcastOperation(bookState *BookState, ws *websocket.Conn, op Op) {
 	msg := Message{
 		BookID: bookState.BookID,
 		Type:   "operation",
@@ -154,26 +149,12 @@ func applyOperation(bookState *BookState, ws *websocket.Conn, op Op) {
 	}
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func deleteClient(ws *websocket.Conn, bookID string) {
 	if bookState, ok := books[bookID]; ok {
 		bookState.Lock.Lock()
 		defer bookState.Lock.Unlock()
 		delete(bookState.Clients, ws)
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func main() {
