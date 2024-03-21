@@ -93,6 +93,7 @@ func processMessage(ws *websocket.Conn, msg Message) {
 		applyOperation(bookState, ws, adjustedOp, currentPage)
 	}
 }
+
 func adjustOperation(currentOp Op, prevOperations []Operation, currentPage int) Op {
 	for _, prevOp := range prevOperations {
 		if prevOp.PageNumber != currentPage {
@@ -122,7 +123,6 @@ func adjustOperation(currentOp Op, prevOperations []Operation, currentPage int) 
 }
 
 func applyOperation(bookState *BookState, ws *websocket.Conn, op Op, currentPage int) {
-
 	pageContent := bookState.Pages[op.PageNumber]
 
 	switch op.Action {
