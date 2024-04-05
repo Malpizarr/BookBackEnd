@@ -1,0 +1,12 @@
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/RestTemplateConfig.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/JwtAuthenticationFilter.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/Controller/FriendshipController.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/Repository/FriendshipRepository.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/util/RedisConfig.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/util/JwtTokenInterceptor.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/BookFriendshipApplication.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/Service/FriendshipService.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/Model/FriendshipDto.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/Model/Friendship.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/SecurityConfig.java
+/home/malpz/Programming/BookBackEnd/BookFriendship/src/main/java/org/example/bookfriendship/util/JwtTokenUtil.java
